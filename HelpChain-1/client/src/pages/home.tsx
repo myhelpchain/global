@@ -8,10 +8,19 @@ import {
   GraduationCap, Megaphone, Languages,
   Zap, Lock, HeartHandshake,
   Twitter, Linkedin, Instagram, Facebook,
-  ArrowUpRight, MapPin, Globe
+  ArrowUpRight, MapPin, Globe,
+  Bell, ChevronDown, LayoutDashboard, Wallet as WalletIcon,
+  MessageCircle, LogOut, User, Settings, HelpCircle,
+  ClipboardList, Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
+import { useNotifications } from "@/hooks/use-notifications";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 /* ── animation preset ───────────────────────────────────── */
 const fadeUp = {
@@ -82,7 +91,21 @@ const testimonials = [
 export default function Home() {
   const [searchInput, setSearchInput] = useState("");
   const [, setLocation] = useLocation();
-  const { user } = useFirebaseAuth();
+  const { user, logout } = useFirebaseAuth();
+  const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("profilePicture");
+    if (saved) setProfileImage(saved);
+    const handler = () => setProfileImage(localStorage.getItem("profilePicture"));
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  const handleLogout = async () => {
+    try { await logout(); setLocation("/"); } catch {}
+  };
 
   /* typing animation */
   const [typingText, setTypingText] = useState("");
@@ -138,11 +161,136 @@ export default function Home() {
           </div>
 
           {/* Right CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {user ? (
-              <Link href="/create-request">
-                <Button className="bg-[#0C6B38] hover:bg-[#0a5a30] text-white text-sm h-9 px-5 rounded-lg font-semibold">Post a Task</Button>
-              </Link>
+              <>
+                {/* Post Task */}
+                <Link href="/create-request">
+                  <Button className="hidden sm:flex bg-[#0C6B38] hover:bg-[#0a5a30] text-white text-sm h-9 px-4 rounded-lg font-semibold items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> Post Task
+                  </Button>
+                </Link>
+
+                {/* Notifications */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
+                      <Bell className="w-5 h-5 text-gray-500" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 p-0 rounded-2xl shadow-xl border-gray-200">
+                    <div className="p-4 border-b border-gray-100 font-semibold text-sm bg-gray-50 rounded-t-2xl flex items-center justify-between">
+                      <span>Notifications</span>
+                      {unreadCount > 0 && (
+                        <button onClick={() => markAllRead()} className="text-xs font-medium hover:underline" style={{ color: "#0C6B38" }}>
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-gray-400 text-sm">
+                        <Bell className="w-9 h-9 mx-auto mb-3 opacity-20" />
+                        No notifications yet
+                      </div>
+                    ) : (
+                      <div className="max-h-[300px] overflow-y-auto">
+                        {notifications.slice(0, 10).map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => !n.is_read && markAsRead(n.id)}
+                            className={`px-4 py-3 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 transition-colors ${!n.is_read ? "bg-green-50/60" : ""}`}
+                          >
+                            <div className="flex items-start gap-2">
+                              {!n.is_read && <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: "#0C6B38" }} />}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800 truncate">{n.title}</p>
+                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* User Avatar Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1.5 rounded-full hover:bg-gray-100 pl-1 pr-2 py-1 transition-colors">
+                      <Avatar className="h-8 w-8 border-2 border-[#0C6B38]/20">
+                        <AvatarImage src={user.photoURL || profileImage || undefined} alt={user.displayName || "User"} />
+                        <AvatarFallback className="text-white text-sm font-semibold" style={{ background: "#0C6B38" }}>
+                          {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 rounded-2xl shadow-xl border-gray-200 p-0" align="end">
+                    <DropdownMenuLabel className="font-normal p-4 bg-gray-50 rounded-t-2xl">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border-2 border-[#0C6B38]/20">
+                          <AvatarImage src={user.photoURL || profileImage || undefined} />
+                          <AvatarFallback className="text-white text-sm font-semibold" style={{ background: "#0C6B38" }}>
+                            {user.displayName?.charAt(0).toUpperCase() || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{user.displayName || "User"}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{user.email}</p>
+                        </div>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="my-0" />
+                    <div className="p-1.5">
+                      {[
+                        { href: "/profile",    icon: User,          label: "My Profile"  },
+                        { href: "/dashboard",  icon: LayoutDashboard, label: "Dashboard" },
+                        { href: "/wallet",     icon: WalletIcon,    label: "Wallet"      },
+                        { href: "/discover",   icon: ClipboardList, label: "My Tasks"    },
+                        { href: "/messages",   icon: MessageCircle, label: "Messages"    },
+                      ].map((item) => (
+                        <DropdownMenuItem key={item.href} asChild className="rounded-lg cursor-pointer px-3 py-2.5">
+                          <Link href={item.href} className="w-full flex items-center gap-3">
+                            <item.icon className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium">{item.label}</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                    <DropdownMenuSeparator className="my-0" />
+                    <div className="p-1.5">
+                      {[
+                        { href: "/settings", icon: Settings,   label: "Settings"    },
+                        { href: "/help",     icon: HelpCircle, label: "Help Center" },
+                      ].map((item) => (
+                        <DropdownMenuItem key={item.href} asChild className="rounded-lg cursor-pointer px-3 py-2.5">
+                          <Link href={item.href} className="w-full flex items-center gap-3">
+                            <item.icon className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm font-medium">{item.label}</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                    <DropdownMenuSeparator className="my-0" />
+                    <div className="p-1.5">
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer rounded-lg px-3 py-2.5"
+                      >
+                        <LogOut className="mr-3 h-4 w-4" />
+                        <span className="text-sm font-medium">Log out</span>
+                      </DropdownMenuItem>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <>
                 <Link href="/auth">
@@ -312,6 +460,57 @@ export default function Home() {
         </motion.div>
       </section>
       </div>{/* end hero background wrapper */}
+
+      {/* ═══════ LOGGED-IN WELCOME STRIP (auth only) ═══════ */}
+      {user && (
+        <section className="border-b border-gray-100 bg-[#FAFFFE]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Greeting */}
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border-2 border-[#0C6B38]/20 flex-shrink-0">
+                <AvatarImage src={user.photoURL || profileImage || undefined} />
+                <AvatarFallback className="text-white text-sm font-bold" style={{ background: "#0C6B38" }}>
+                  {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-xs text-gray-400 font-medium">Welcome back</p>
+                <p className="text-base font-bold text-gray-900">
+                  {user.displayName?.split(" ")[0] || "there"} 👋
+                </p>
+              </div>
+            </div>
+
+            {/* Quick-action buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {[
+                { href: "/dashboard",      icon: LayoutDashboard, label: "Dashboard"   },
+                { href: "/discover",       icon: Search,          label: "Browse Tasks" },
+                { href: "/wallet",         icon: WalletIcon,      label: "Wallet"       },
+                { href: "/messages",       icon: MessageCircle,   label: "Messages"     },
+              ].map(({ href, icon: Icon, label }) => (
+                <Link key={href} href={href}>
+                  <button
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-700 hover:border-[#0C6B38] hover:text-[#0C6B38] transition-all"
+                  >
+                    <Icon className="w-4 h-4" />
+                    {label}
+                  </button>
+                </Link>
+              ))}
+              <Link href="/create-request">
+                <button
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: "#0C6B38" }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Post a Task
+                </button>
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ═══════ STATS BAR ═══════ */}
       <section style={{ background: "#0C6B38" }} className="py-10 px-4">

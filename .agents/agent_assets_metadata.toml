@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "FL44HhG8vBa6x7lWwYheH"
+uri = "file://HELPCHAIN_FULLSTACK_PLAN.md"
+type = "text"
+title = "HelpChain — Complete Full-Stack Developer Plan"
