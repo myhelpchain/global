@@ -8,22 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet, type Transaction } from "@/hooks/use-wallet";
-import { useCryptoPrices } from "@/hooks/use-crypto-prices";
 import { useLocalizationStore } from "@/stores/localization-store";
-import { useFirebaseAuth } from "@/contexts/FirebaseAuthContext";
+import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useToast } from "@/hooks/use-toast";
-import { PhantomIcon } from "@/components/ui/phantom-icon";
 import {
   Wallet, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle,
-  TrendingUp, Shield, CircleDollarSign, Coins, Eye, EyeOff,
-  Download, Upload, Filter, CreditCard, Building, Globe, Loader2, ExternalLink, Link2, RefreshCw
+  TrendingUp, Shield, CircleDollarSign, Eye, EyeOff,
+  Download, Upload, Filter, CreditCard, Building, Loader2, ExternalLink, RefreshCw
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const WALLET_API = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/wallet-api`;
-const CRYPTO_DEPOSIT_FEE_PERCENT = 5;
 
 function TransactionIcon({ type }: { type: string }) {
   switch (type) {
@@ -40,50 +37,36 @@ function TransactionIcon({ type }: { type: string }) {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant={status === "completed" ? "default" : status === "pending" ? "secondary" : "destructive"} className="text-xs">
+    <Badge
+      variant={status === "completed" ? "default" : status === "pending" || status === "processing" ? "secondary" : "destructive"}
+      className="text-xs"
+    >
       {status === "completed" && <CheckCircle className="h-3 w-3 mr-1" />}
-      {status === "pending" && <Clock className="h-3 w-3 mr-1" />}
+      {(status === "pending" || status === "processing") && <Clock className="h-3 w-3 mr-1" />}
       {status === "failed" && <XCircle className="h-3 w-3 mr-1" />}
       {status}
     </Badge>
   );
 }
 
-// Phantom wallet detection
-function getPhantomProvider() {
-  if (typeof window !== "undefined" && "solana" in window) {
-    const provider = (window as any).solana;
-    if (provider?.isPhantom) return provider;
-  }
-  return null;
-}
-
 function WalletPageContent() {
   const {
     availableBalance, escrowBalance, transactions, isLoading, transactionsLoading,
     initializeDeposit, verifyDeposit, withdraw, refetchWallet,
-    depositPending, verifyPending, withdrawPending,
+    depositPending, withdrawPending,
   } = useWallet();
   const { user, getIdToken } = useFirebaseAuth();
   const { formatLocal, currency } = useLocalizationStore();
   const { toast } = useToast();
-  const { usdcNgn, solNgn, solUsd, lastUpdated, isLoading: pricesLoading, refresh: refreshPrices } = useCryptoPrices();
 
-  const [showAssets, setShowAssets] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
   const [filter, setFilter] = useState("all");
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [depositMethod, setDepositMethod] = useState("card");
-  const [withdrawMethod, setWithdrawMethod] = useState("bank");
-  const [cryptoAddress, setCryptoAddress] = useState("");
+  const [depositMethod, setDepositMethod] = useState<"card" | "bank">("card");
   const [verifyingPayment, setVerifyingPayment] = useState(false);
-
-  // Crypto deposit from connected wallet
-  const [cryptoDepositAmount, setCryptoDepositAmount] = useState("");
-  const [cryptoDepositAsset, setCryptoDepositAsset] = useState<"usdc" | "sol">("usdc");
 
   // Bank withdrawal fields
   const [banks, setBanks] = useState<{ name: string; code: string }[]>([]);
@@ -93,85 +76,51 @@ function WalletPageContent() {
   const [verifyingAccount, setVerifyingAccount] = useState(false);
   const [banksLoading, setBanksLoading] = useState(false);
 
-  // Phantom wallet state
-  const [phantomConnected, setPhantomConnected] = useState(false);
-  const [phantomAddress, setPhantomAddress] = useState("");
-  const [phantomAvailable, setPhantomAvailable] = useState(false);
-  const [phantomSolBalance, setPhantomSolBalance] = useState(0);
-  const [phantomUsdcBalance, setPhantomUsdcBalance] = useState(0);
-  const [phantomBalancesLoading, setPhantomBalancesLoading] = useState(false);
-
   const totalBalance = availableBalance + escrowBalance;
-  const usdcEquivalent = usdcNgn > 0 ? (availableBalance / usdcNgn).toFixed(2) : "0.00";
-  const solEquivalent = solNgn > 0 ? (availableBalance / solNgn).toFixed(6) : "0.000000";
   const filteredTransactions = filter === "all" ? transactions : transactions.filter((t) => t.type === filter);
-
   const masked = "••••••";
 
-  // Fetch Phantom wallet balances
-  const fetchPhantomBalances = useCallback(async (pubKey: string) => {
-    setPhantomBalancesLoading(true);
-    try {
-      // SOL balance
-      const solRes = await fetch("https://api.mainnet-beta.solana.com", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [pubKey] }),
-      });
-      const solData = await solRes.json();
-      setPhantomSolBalance((solData.result?.value || 0) / 1e9);
-
-      // USDC balance (SPL Token)
-      const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-      const tokenRes = await fetch("https://api.mainnet-beta.solana.com", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0", id: 2, method: "getTokenAccountsByOwner",
-          params: [pubKey, { mint: USDC_MINT }, { encoding: "jsonParsed" }],
-        }),
-      });
-      const tokenData = await tokenRes.json();
-      const usdcAccounts = tokenData.result?.value || [];
-      let usdcTotal = 0;
-      for (const acc of usdcAccounts) {
-        usdcTotal += acc.account?.data?.parsed?.info?.tokenAmount?.uiAmount || 0;
-      }
-      setPhantomUsdcBalance(usdcTotal);
-    } catch (err) {
-      console.error("Failed to fetch phantom balances:", err);
-    } finally {
-      setPhantomBalancesLoading(false);
-    }
-  }, []);
-
-  // Check for Phantom on mount
+  // Load banks when withdrawal modal opens
   useEffect(() => {
-    const provider = getPhantomProvider();
-    setPhantomAvailable(!!provider);
-    if (provider?.isConnected && provider.publicKey) {
-      const pubKey = provider.publicKey.toString();
-      setPhantomConnected(true);
-      setPhantomAddress(pubKey);
-      fetchPhantomBalances(pubKey);
-    }
-  }, [fetchPhantomBalances]);
-
-  // Load banks when withdrawal opens with bank method
-  useEffect(() => {
-    if (withdrawOpen && withdrawMethod === "bank" && banks.length === 0) {
+    if (withdrawOpen && banks.length === 0) {
       loadBanks();
     }
-  }, [withdrawOpen, withdrawMethod]);
+  }, [withdrawOpen]);
 
-  // Auto-verify account when bank + 10-digit account number
+  // Auto-verify bank account when 10-digit number entered
   useEffect(() => {
     if (selectedBank && accountNumber.length === 10) {
       verifyBankAccount();
-    } else {
+    } else if (accountNumber.length < 10) {
       setAccountName("");
     }
   }, [selectedBank, accountNumber]);
+
+  // Handle Paystack redirect callback on return
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("reference") || params.get("trxref");
+    if (ref && user) {
+      window.history.replaceState({}, "", "/wallet");
+      setVerifyingPayment(true);
+      verifyDeposit(ref)
+        .then((result) => {
+          toast({
+            title: "Deposit Successful!",
+            description: `₦${result.amount?.toLocaleString() || ""} has been added to your wallet.`,
+          });
+          refetchWallet();
+        })
+        .catch((err) => {
+          toast({
+            title: "Payment Verification",
+            description: err.message || "Could not verify payment. Please contact support if funds were deducted.",
+            variant: "destructive",
+          });
+        })
+        .finally(() => setVerifyingPayment(false));
+    }
+  }, [user]);
 
   const loadBanks = async () => {
     setBanksLoading(true);
@@ -215,58 +164,6 @@ function WalletPageContent() {
     }
   };
 
-  const connectPhantom = async () => {
-    const provider = getPhantomProvider();
-    if (!provider) {
-      window.open("https://phantom.app/", "_blank");
-      return;
-    }
-    try {
-      const resp = await provider.connect();
-      const pubKey = resp.publicKey.toString();
-      setPhantomConnected(true);
-      setPhantomAddress(pubKey);
-      setCryptoAddress(pubKey);
-      fetchPhantomBalances(pubKey);
-      toast({ title: "Wallet Connected", description: `Connected to ${pubKey.slice(0, 8)}...` });
-    } catch (err: any) {
-      toast({ title: "Connection failed", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const disconnectPhantom = async () => {
-    const provider = getPhantomProvider();
-    if (provider) {
-      await provider.disconnect();
-    }
-    setPhantomConnected(false);
-    setPhantomAddress("");
-    setCryptoAddress("");
-    setPhantomSolBalance(0);
-    setPhantomUsdcBalance(0);
-  };
-
-  // Handle Paystack redirect callback
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get("reference") || params.get("trxref");
-
-    if (ref && user) {
-      window.history.replaceState({}, "", "/wallet");
-      setVerifyingPayment(true);
-
-      verifyDeposit(ref)
-        .then((result) => {
-          toast({ title: "💰 Deposit Successful!", description: `₦${result.amount?.toLocaleString() || ""} has been added to your wallet.` });
-          refetchWallet();
-        })
-        .catch((err) => {
-          toast({ title: "Payment Verification", description: err.message || "Could not verify payment.", variant: "destructive" });
-        })
-        .finally(() => setVerifyingPayment(false));
-    }
-  }, [user]);
-
   const handleDeposit = async () => {
     const amount = parseFloat(depositAmount);
     if (!amount || amount < 100) {
@@ -285,48 +182,24 @@ function WalletPageContent() {
     }
   };
 
-  const handleCryptoDeposit = async () => {
-    const amt = parseFloat(cryptoDepositAmount);
-    if (!amt || amt <= 0) {
-      toast({ title: "Invalid amount", variant: "destructive" });
-      return;
-    }
-    const maxBal = cryptoDepositAsset === "usdc" ? phantomUsdcBalance : phantomSolBalance;
-    if (amt > maxBal) {
-      toast({ title: "Insufficient balance", description: `You only have ${maxBal} ${cryptoDepositAsset.toUpperCase()} in your wallet.`, variant: "destructive" });
-      return;
-    }
-
-    // Calculate fees
-    const fee = amt * (CRYPTO_DEPOSIT_FEE_PERCENT / 100);
-    const netAmount = amt - fee;
-    const ngnValue = cryptoDepositAsset === "usdc" ? netAmount * usdcNgn : netAmount * solNgn;
-
-    toast({
-      title: "Crypto Deposit",
-      description: `Sending ${amt} ${cryptoDepositAsset.toUpperCase()} (Fee: ${fee.toFixed(4)}, Net: ${netAmount.toFixed(4)} ≈ ₦${ngnValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}).\n\nThis feature requires on-chain signing integration — coming soon!`,
-    });
-
-    setCryptoDepositAmount("");
-  };
-
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     if (!amount || amount <= 0) {
       toast({ title: "Invalid amount", variant: "destructive" });
       return;
     }
+    if (amount > availableBalance) {
+      toast({ title: "Insufficient balance", description: "You cannot withdraw more than your available balance.", variant: "destructive" });
+      return;
+    }
+    if (!selectedBank || accountNumber.length !== 10 || !accountName) {
+      toast({ title: "Bank details required", description: "Please select a bank, enter your 10-digit account number, and wait for verification.", variant: "destructive" });
+      return;
+    }
     try {
-      const result = await withdraw(
-        amount,
-        withdrawMethod === "bank" ? selectedBank : undefined,
-        withdrawMethod === "bank" ? accountNumber : undefined,
-        withdrawMethod === "bank" ? accountName : undefined,
-        withdrawMethod === "crypto" ? (cryptoAddress || phantomAddress) : undefined,
-      );
+      const result = await withdraw(amount, selectedBank, accountNumber, accountName);
       toast({ title: "Withdrawal initiated", description: result.message || `₦${amount.toLocaleString()} withdrawal is being processed.` });
       setWithdrawAmount("");
-      setCryptoAddress("");
       setAccountNumber("");
       setAccountName("");
       setSelectedBank("");
@@ -382,160 +255,82 @@ function WalletPageContent() {
           <Card className="md:col-span-2 bg-gradient-to-br from-primary to-accent text-primary-foreground border-0 shadow-xl">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium"><Wallet size={18} /> Total Balance</div>
-                <button onClick={() => setHideBalance(!hideBalance)} className="text-primary-foreground/70 hover:text-primary-foreground transition-colors" title={hideBalance ? "Show balance" : "Hide balance"}>
+                <div className="flex items-center gap-2 text-primary-foreground/80 text-sm font-medium">
+                  <Wallet size={18} /> Total Balance
+                </div>
+                <button
+                  onClick={() => setHideBalance(!hideBalance)}
+                  className="text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                  title={hideBalance ? "Show balance" : "Hide balance"}
+                >
                   {hideBalance ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               {isLoading ? (
-                <div className="h-12 flex items-center"><Loader2 className="w-6 h-6 animate-spin text-primary-foreground/60" /></div>
+                <div className="h-12 flex items-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-foreground/60" />
+                </div>
               ) : (
-                <p className="text-4xl font-bold tracking-tight">{hideBalance ? masked : formatLocal(totalBalance)}</p>
+                <p className="text-4xl font-bold tracking-tight">
+                  {hideBalance ? masked : formatLocal(totalBalance)}
+                </p>
               )}
               <div className="flex gap-6 mt-4 text-sm">
-                <div><span className="text-primary-foreground/70">Available</span><p className="font-semibold">{hideBalance ? masked : formatLocal(availableBalance)}</p></div>
-                <div><span className="text-primary-foreground/70">In Escrow</span><p className="font-semibold">{hideBalance ? masked : formatLocal(escrowBalance)}</p></div>
+                <div>
+                  <span className="text-primary-foreground/70">Available</span>
+                  <p className="font-semibold">{hideBalance ? masked : formatLocal(availableBalance)}</p>
+                </div>
+                <div>
+                  <span className="text-primary-foreground/70">In Escrow</span>
+                  <p className="font-semibold">{hideBalance ? masked : formatLocal(escrowBalance)}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2"><Coins size={16} /> Asset Breakdown</CardTitle>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setShowAssets(!showAssets)} className="text-muted-foreground hover:text-foreground transition-colors" title={showAssets ? "Collapse" : "Expand"}>
-                    {showAssets ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button onClick={refreshPrices} className="text-muted-foreground hover:text-foreground transition-colors" title="Refresh prices">
-                    <RefreshCw size={14} className={pricesLoading ? "animate-spin" : ""} />
-                  </button>
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Shield size={16} /> Escrow Protection
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <p className="leading-relaxed">
+                Your payments are held securely in escrow until you confirm a task is complete. Funds are only released when you approve.
+              </p>
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Powered by Paystack</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Withdrawals within 24 hours</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span>Bank transfer to any Nigerian bank</span>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {showAssets ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">{currency.code}</span>
-                    <span className="text-sm font-semibold">{hideBalance ? masked : formatLocal(availableBalance)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-muted-foreground">USDC</span>
-                      <span className="text-[10px] text-muted-foreground/60">1 USDC = ₦{usdcNgn.toLocaleString()}</span>
-                    </div>
-                    <span className="text-sm font-semibold">{hideBalance ? masked : `$${usdcEquivalent}`}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm text-muted-foreground">SOL</span>
-                      <span className="text-[10px] text-muted-foreground/60">1 SOL = ₦{solNgn.toLocaleString()}</span>
-                    </div>
-                    <span className="text-sm font-semibold">{hideBalance ? masked : solEquivalent}</span>
-                  </div>
-                  <div className="h-px bg-border my-2" />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">Live rates · Auto-refreshes every 30s</p>
-                    {lastUpdated && <p className="text-[10px] text-muted-foreground/60">{lastUpdated.toLocaleTimeString()}</p>}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground">Click <Eye className="inline h-3.5 w-3.5" /> to view asset details</p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Phantom Wallet + Blockchain Info */}
-        <Card className="mb-8 border-dashed border-accent/40">
-          <CardContent className="p-5">
-            <div className="flex items-start gap-4">
-              <div className="bg-accent/10 p-3 rounded-xl">
-                <Globe className="h-6 w-6 text-accent" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-foreground">Blockchain Integration</h3>
-                  {phantomConnected ? (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default" className="text-xs gap-1">
-                        <Link2 className="h-3 w-3" />
-                        {phantomAddress.slice(0, 4)}...{phantomAddress.slice(-4)}
-                      </Badge>
-                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={disconnectPhantom}>
-                        Disconnect
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5" onClick={connectPhantom}>
-                      <PhantomIcon className="w-4 h-4" />
-                      {phantomAvailable ? "Connect Phantom" : "Install Phantom"}
-                    </Button>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  HelpChain uses <strong>USDC on Solana</strong> as the internal ledger. Connect your Phantom wallet for crypto deposits & withdrawals.
-                </p>
-
-                {/* Connected wallet balances */}
-                {phantomConnected && (
-                  <div className="bg-muted/50 rounded-xl p-4 mb-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-                        <PhantomIcon className="w-4 h-4" /> Connected Wallet Assets
-                      </h4>
-                      <button onClick={() => fetchPhantomBalances(phantomAddress)} className="text-muted-foreground hover:text-foreground">
-                        <RefreshCw size={12} className={phantomBalancesLoading ? "animate-spin" : ""} />
-                      </button>
-                    </div>
-                    {phantomBalancesLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-3 h-3 animate-spin" /> Loading balances...
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-background rounded-lg p-3 border">
-                          <p className="text-xs text-muted-foreground">SOL</p>
-                          <p className="text-lg font-bold text-foreground">{hideBalance ? masked : phantomSolBalance.toFixed(4)}</p>
-                          <p className="text-[10px] text-muted-foreground">≈ {hideBalance ? masked : `₦${(phantomSolBalance * solNgn).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}</p>
-                        </div>
-                        <div className="bg-background rounded-lg p-3 border">
-                          <p className="text-xs text-muted-foreground">USDC</p>
-                          <p className="text-lg font-bold text-foreground">{hideBalance ? masked : phantomUsdcBalance.toFixed(2)}</p>
-                          <p className="text-[10px] text-muted-foreground">≈ {hideBalance ? masked : `₦${(phantomUsdcBalance * usdcNgn).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}</p>
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-[10px] text-muted-foreground">
-                      {CRYPTO_DEPOSIT_FEE_PERCENT}% platform fee on crypto deposits
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="text-xs">USDC Ledger ✓</Badge>
-                  <Badge variant="secondary" className="text-xs">Solana Network ✓</Badge>
-                  <Badge variant={phantomConnected ? "default" : "outline"} className="text-xs">
-                    {phantomConnected ? "Phantom Connected ✓" : "Phantom — Not Connected"}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs text-muted-foreground">On-chain Escrow — Coming Soon</Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Transaction History */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div><CardTitle className="text-lg">Transaction History</CardTitle><CardDescription>Your recent financial activity</CardDescription></div>
+              <div>
+                <CardTitle className="text-lg">Transaction History</CardTitle>
+                <CardDescription>Your recent financial activity</CardDescription>
+              </div>
               <div className="flex items-center gap-2">
                 <Filter size={14} className="text-muted-foreground" />
-                <select value={filter} onChange={(e) => setFilter(e.target.value)} className="text-sm bg-muted border-0 rounded-lg px-3 py-1.5 text-foreground">
+                <select
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="text-sm bg-muted border-0 rounded-lg px-3 py-1.5 text-foreground"
+                >
                   <option value="all">All</option>
                   <option value="deposit">Deposits</option>
                   <option value="withdrawal">Withdrawals</option>
@@ -549,26 +344,40 @@ function WalletPageContent() {
           </CardHeader>
           <CardContent>
             {transactionsLoading ? (
-              <div className="text-center py-12"><Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" /></div>
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
+              </div>
             ) : filteredTransactions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <CircleDollarSign className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm">No transactions found</p>
+                <p className="text-sm font-medium">No transactions yet</p>
+                <p className="text-xs mt-1">Deposit funds to get started</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {filteredTransactions.map((tx) => (
                   <div key={tx.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center"><TransactionIcon type={tx.type} /></div>
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                        <TransactionIcon type={tx.type} />
+                      </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">{tx.description}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(tx.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.createdAt).toLocaleDateString(undefined, {
+                            month: "short", day: "numeric", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={cn("text-sm font-semibold", ["deposit", "escrow_refund", "earning"].includes(tx.type) ? "text-chart-2" : "text-foreground")}>
-                        {["deposit", "escrow_refund", "earning"].includes(tx.type) ? "+" : "-"}{hideBalance ? masked : formatLocal(tx.amount)}
+                      <span className={cn(
+                        "text-sm font-semibold",
+                        ["deposit", "escrow_refund", "earning"].includes(tx.type) ? "text-chart-2" : "text-foreground"
+                      )}>
+                        {["deposit", "escrow_refund", "earning"].includes(tx.type) ? "+" : "-"}
+                        {hideBalance ? masked : formatLocal(tx.amount)}
                       </span>
                       <StatusBadge status={tx.status} />
                     </div>
@@ -591,23 +400,24 @@ function WalletPageContent() {
               </span>
               Fund Your Wallet
             </DialogTitle>
-            <DialogDescription>Add funds via Paystack or connected crypto wallet</DialogDescription>
+            <DialogDescription>Add funds securely via Paystack — Nigeria's leading payment processor</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
               <Label>Payment Method</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="grid grid-cols-2 gap-3 mt-2">
                 {[
-                  { value: "card", label: "Debit/Credit Card", icon: CreditCard },
-                  { value: "bank", label: "Bank Transfer", icon: Building },
-                  { value: "crypto", label: "Crypto Wallet", icon: Globe },
+                  { value: "card" as const, label: "Debit/Credit Card", icon: CreditCard },
+                  { value: "bank" as const, label: "Bank Transfer", icon: Building },
                 ].map((m) => (
-                  <div key={m.value}
+                  <div
+                    key={m.value}
                     className={cn(
                       "cursor-pointer rounded-xl border-2 p-4 text-center transition-all",
                       depositMethod === m.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
                     )}
-                    onClick={() => setDepositMethod(m.value)}>
+                    onClick={() => setDepositMethod(m.value)}
+                  >
                     <m.icon className={cn("w-6 h-6 mx-auto mb-2", depositMethod === m.value ? "text-primary" : "text-muted-foreground")} />
                     <p className="text-xs font-medium">{m.label}</p>
                   </div>
@@ -615,173 +425,64 @@ function WalletPageContent() {
               </div>
             </div>
 
-            {depositMethod === "crypto" ? (
-              <div className="space-y-4">
-                {phantomConnected ? (
-                  <>
-                    {/* Connected wallet info */}
-                    <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <PhantomIcon className="w-4 h-4" /> Deposit from Phantom
-                        </h4>
-                        <Badge variant="default" className="text-xs">Connected</Badge>
-                      </div>
-
-                      {/* Wallet balances */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div
-                          className={cn(
-                            "rounded-lg p-3 border cursor-pointer transition-all",
-                            cryptoDepositAsset === "usdc" ? "border-primary bg-primary/5" : "border-border"
-                          )}
-                          onClick={() => setCryptoDepositAsset("usdc")}
-                        >
-                          <p className="text-xs text-muted-foreground">USDC</p>
-                          <p className="text-sm font-bold">{phantomUsdcBalance.toFixed(2)}</p>
-                          <p className="text-[10px] text-muted-foreground">≈ ₦{(phantomUsdcBalance * usdcNgn).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                        </div>
-                        <div
-                          className={cn(
-                            "rounded-lg p-3 border cursor-pointer transition-all",
-                            cryptoDepositAsset === "sol" ? "border-primary bg-primary/5" : "border-border"
-                          )}
-                          onClick={() => setCryptoDepositAsset("sol")}
-                        >
-                          <p className="text-xs text-muted-foreground">SOL</p>
-                          <p className="text-sm font-bold">{phantomSolBalance.toFixed(4)}</p>
-                          <p className="text-[10px] text-muted-foreground">≈ ₦{(phantomSolBalance * solNgn).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                        </div>
-                      </div>
-
-                      {/* Amount input */}
-                      <div>
-                        <Label className="text-xs">Amount ({cryptoDepositAsset.toUpperCase()})</Label>
-                        <Input
-                          type="number"
-                          value={cryptoDepositAmount}
-                          onChange={(e) => setCryptoDepositAmount(e.target.value)}
-                          placeholder={`0.00 ${cryptoDepositAsset.toUpperCase()}`}
-                          className="mt-1 h-12 font-mono"
-                          step="0.01"
-                        />
-                        <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                          <span>Max: {cryptoDepositAsset === "usdc" ? phantomUsdcBalance.toFixed(2) : phantomSolBalance.toFixed(4)}</span>
-                          <button
-                            className="text-primary underline"
-                            onClick={() => setCryptoDepositAmount(cryptoDepositAsset === "usdc" ? phantomUsdcBalance.toFixed(2) : phantomSolBalance.toFixed(4))}
-                          >
-                            Use Max
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Fee breakdown */}
-                      {parseFloat(cryptoDepositAmount) > 0 && (
-                        <div className="bg-muted rounded-lg p-3 space-y-1.5 text-xs">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Deposit Amount</span>
-                            <span className="font-medium">{parseFloat(cryptoDepositAmount).toFixed(4)} {cryptoDepositAsset.toUpperCase()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Platform Fee ({CRYPTO_DEPOSIT_FEE_PERCENT}%)</span>
-                            <span className="font-medium text-destructive">-{(parseFloat(cryptoDepositAmount) * CRYPTO_DEPOSIT_FEE_PERCENT / 100).toFixed(4)}</span>
-                          </div>
-                          <div className="h-px bg-border" />
-                          <div className="flex justify-between font-semibold">
-                            <span>Net Credit</span>
-                            <span className="text-chart-2">
-                              {(parseFloat(cryptoDepositAmount) * (1 - CRYPTO_DEPOSIT_FEE_PERCENT / 100)).toFixed(4)} {cryptoDepositAsset.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>NGN Equivalent</span>
-                            <span>
-                              ≈ ₦{(
-                                parseFloat(cryptoDepositAmount) * (1 - CRYPTO_DEPOSIT_FEE_PERCENT / 100) *
-                                (cryptoDepositAsset === "usdc" ? usdcNgn : solNgn)
-                              ).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Blockchain transaction confirmation required
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="text-center py-6 bg-muted/30 rounded-xl border border-dashed">
-                      <PhantomIcon className="w-10 h-10 mx-auto mb-3" />
-                      <p className="text-sm font-medium text-foreground mb-1">Connect your wallet to deposit crypto</p>
-                      <p className="text-xs text-muted-foreground mb-4">Link your Phantom wallet to deposit USDC or SOL directly</p>
-                      <Button variant="outline" className="gap-2" onClick={connectPhantom}>
-                        <PhantomIcon className="w-4 h-4" />
-                        {phantomAvailable ? "Connect Phantom Wallet" : "Install Phantom Wallet"}
-                      </Button>
-                    </div>
-                    <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-                      <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        {CRYPTO_DEPOSIT_FEE_PERCENT}% platform fee applies to all crypto deposits
-                      </p>
-                    </div>
-                  </div>
-                )}
+            <div>
+              <Label>Amount ({currency.symbol})</Label>
+              <div className="relative mt-2">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-mono text-muted-foreground">
+                  {currency.symbol}
+                </span>
+                <Input
+                  type="number"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  placeholder="0"
+                  className="h-14 text-xl font-mono pl-10"
+                  min="100"
+                />
               </div>
-            ) : (
-              <>
-                <div>
-                  <Label>Amount ({currency.symbol})</Label>
-                  <div className="relative mt-2">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-mono text-muted-foreground">{currency.symbol}</span>
-                    <Input type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="0" className="h-14 text-xl font-mono pl-10" min="100" />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>Minimum: ₦100</span>
-                    <span>Current Balance: {formatLocal(availableBalance)}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {[1000, 5000, 10000, 25000].map((q) => (
-                    <Button key={q} type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={() => setDepositAmount(q.toString())}>
-                      {currency.symbol}{(q / 1000)}k
-                    </Button>
-                  ))}
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Secured by Paystack — Nigeria's leading payment processor
-                  </p>
-                </div>
-              </>
-            )}
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>Minimum: ₦100</span>
+                <span>Available: {formatLocal(availableBalance)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              {[1000, 5000, 10000, 25000].map((q) => (
+                <Button
+                  key={q}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setDepositAmount(q.toString())}
+                >
+                  {currency.symbol}{q / 1000}k
+                </Button>
+              ))}
+            </div>
+
+            <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                Secured by Paystack — supports cards, bank transfers, and USSD
+              </p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDepositOpen(false)}>Cancel</Button>
-            {depositMethod === "crypto" ? (
-              <Button
-                onClick={handleCryptoDeposit}
-                disabled={!phantomConnected || !parseFloat(cryptoDepositAmount)}
-                className="shadow-lg shadow-primary/20"
-              >
-                Confirm Crypto Deposit
-              </Button>
-            ) : (
-              <Button onClick={handleDeposit} disabled={parseFloat(depositAmount) < 100 || depositPending} className="shadow-lg shadow-primary/20">
-                {depositPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
-                ) : (
-                  <>Continue to Payment <ExternalLink className="w-4 h-4 ml-2" /></>
-                )}
-              </Button>
-            )}
+            <Button variant="outline" onClick={() => { setDepositOpen(false); setDepositAmount(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeposit}
+              disabled={parseFloat(depositAmount) < 100 || depositPending}
+              className="shadow-lg shadow-primary/20"
+            >
+              {depositPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              ) : (
+                <>Continue to Payment <ExternalLink className="w-4 h-4 ml-2" /></>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -790,148 +491,108 @@ function WalletPageContent() {
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Withdraw Funds</DialogTitle>
-            <DialogDescription>Send funds to your bank or crypto wallet</DialogDescription>
+            <DialogTitle>Withdraw to Bank Account</DialogTitle>
+            <DialogDescription>Transfer funds directly to your Nigerian bank account</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label>Withdrawal Method</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {[
-                  { value: "bank", label: "Bank Account", icon: Building },
-                  { value: "crypto", label: "Crypto Wallet", icon: Globe },
-                ].map((m) => (
-                  <div key={m.value}
-                    className={cn(
-                      "cursor-pointer rounded-xl border-2 p-4 text-center transition-all",
-                      withdrawMethod === m.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30",
-                    )}
-                    onClick={() => setWithdrawMethod(m.value)}>
-                    <m.icon className={cn("w-6 h-6 mx-auto mb-2", withdrawMethod === m.value ? "text-primary" : "text-muted-foreground")} />
-                    <p className="text-sm font-medium">{m.label}</p>
-                  </div>
-                ))}
+              <Label>Amount ({currency.symbol})</Label>
+              <div className="relative mt-2">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-mono text-muted-foreground">
+                  {currency.symbol}
+                </span>
+                <Input
+                  type="number"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder="0"
+                  className="h-14 text-xl font-mono pl-10"
+                  min="100"
+                  max={availableBalance}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>Available: {formatLocal(availableBalance)}</span>
+                <button
+                  className="text-primary underline text-xs"
+                  onClick={() => setWithdrawAmount(availableBalance.toString())}
+                >
+                  Withdraw all
+                </button>
               </div>
             </div>
 
-            {withdrawMethod === "bank" && (
-              <>
-                <div>
-                  <Label>Bank</Label>
-                  <Select value={selectedBank} onValueChange={setSelectedBank}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder={banksLoading ? "Loading banks..." : "Select your bank"} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[280px] overflow-y-auto">
-                      {banks.length === 0 && banksLoading && (
-                        <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-                          <Loader2 className="w-4 h-4 animate-spin" /> Loading banks...
-                        </div>
-                      )}
-                      {banks.map((b) => (
-                        <SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Account Number</Label>
-                  <Input
-                    placeholder="0123456789"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                    className="mt-2 h-12 font-mono"
-                    maxLength={10}
-                  />
-                </div>
-                {verifyingAccount && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Verifying account...
-                  </div>
-                )}
-                {accountName && (
-                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
-                    <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      {accountName}
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-
-            {withdrawMethod === "crypto" && (
-              <div className="space-y-3">
-                {phantomConnected ? (
-                  <div className="bg-accent/5 p-3 rounded-xl border border-accent/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <PhantomIcon className="w-5 h-5" />
-                        <div>
-                          <p className="text-sm font-medium">Phantom Wallet</p>
-                          <p className="text-xs text-muted-foreground font-mono">{phantomAddress.slice(0, 8)}...{phantomAddress.slice(-6)}</p>
-                        </div>
-                      </div>
-                      <Badge variant="default" className="text-xs">Connected</Badge>
+            <div>
+              <Label>Bank</Label>
+              <Select value={selectedBank} onValueChange={setSelectedBank}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder={banksLoading ? "Loading banks..." : "Select your bank"} />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px] overflow-y-auto">
+                  {banksLoading && (
+                    <div className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading banks...
                     </div>
-                  </div>
-                ) : (
-                  <Button variant="outline" className="w-full gap-2" onClick={connectPhantom}>
-                    <PhantomIcon className="w-4 h-4" />
-                    {phantomAvailable ? "Connect Phantom Wallet" : "Install Phantom Wallet"}
-                  </Button>
-                )}
-                <div>
-                  <Label>Wallet Address (USDC on Solana)</Label>
-                  <Input
-                    placeholder="Enter Solana wallet address"
-                    value={cryptoAddress || phantomAddress}
-                    onChange={(e) => setCryptoAddress(e.target.value)}
-                    className="mt-2 h-12 font-mono text-sm"
-                  />
-                </div>
-
-                {/* Crypto withdrawal fee breakdown */}
-                {parseFloat(withdrawAmount) > 0 && (
-                  <div className="bg-muted rounded-lg p-3 space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Withdraw Amount (NGN)</span>
-                      <span className="font-medium">₦{parseFloat(withdrawAmount).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">USDC Equivalent</span>
-                      <span className="font-medium">{usdcNgn > 0 ? (parseFloat(withdrawAmount) / usdcNgn).toFixed(2) : "0.00"} USDC</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Est. Network Fee</span>
-                      <span className="font-medium text-muted-foreground">~0.000005 SOL</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                  {banks.map((b) => (
+                    <SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div>
-              <Label>Amount ({currency.symbol})</Label>
-              <div className="relative mt-2">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-mono text-muted-foreground">{currency.symbol}</span>
-                <Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder="0" className="h-14 text-xl font-mono pl-10" />
+              <Label>Account Number</Label>
+              <Input
+                placeholder="0123456789"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                className="mt-2 h-12 font-mono"
+                maxLength={10}
+              />
+            </div>
+
+            {verifyingAccount && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Verifying account...
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Available: {formatLocal(availableBalance)}</p>
+            )}
+
+            {accountName && (
+              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
+                <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  {accountName}
+                </p>
+              </div>
+            )}
+
+            <div className="bg-muted/50 p-3 rounded-lg text-xs text-muted-foreground">
+              <p>Withdrawals are processed within 24 hours on business days. Ensure your bank details are correct before submitting.</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWithdrawOpen(false)}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setWithdrawOpen(false);
+                setWithdrawAmount("");
+                setAccountNumber("");
+                setAccountName("");
+                setSelectedBank("");
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={handleWithdraw}
-              variant="destructive"
-              disabled={
-                withdrawPending ||
-                (withdrawMethod === "bank" && (!selectedBank || !accountNumber || !accountName)) ||
-                (withdrawMethod === "crypto" && !cryptoAddress && !phantomAddress)
-              }
+              disabled={!parseFloat(withdrawAmount) || !selectedBank || accountNumber.length !== 10 || !accountName || withdrawPending}
             >
-              {withdrawPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</> : "Withdraw"}
+              {withdrawPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              ) : (
+                "Confirm Withdrawal"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

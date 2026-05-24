@@ -66,10 +66,10 @@ const sampleTasks = [
 ];
 
 const stats = [
-  { value: "50K+", label: "Tasks Completed" },
-  { value: "120+", label: "Countries Active" },
-  { value: "4.9",  label: "Average Rating"  },
-  { value: "₦3B+", label: "Paid to Workers" },
+  { value: "5,000+", label: "Tasks Completed" },
+  { value: "36",     label: "States Active"   },
+  { value: "4.9",    label: "Average Rating"  },
+  { value: "₦50M+",  label: "Paid to Workers" },
 ];
 
 const trust = [
@@ -80,9 +80,9 @@ const trust = [
 ];
 
 const testimonials = [
-  { name: "Chisom A.", role: "Client — Lagos",  quote: "I needed a logo urgently and got 8 offers in under an hour. The escrow process gave me total peace of mind.", img: "https://i.pravatar.cc/40?img=47" },
-  { name: "David M.",  role: "Worker — Nairobi",quote: "I've been earning consistently for 6 months. Fast payouts and I've never had a payment dispute.", img: "https://i.pravatar.cc/40?img=11" },
-  { name: "Sandra E.", role: "Client — London", quote: "HelpChain's verification system makes all the difference. Quality workers and a trustworthy process.", img: "https://i.pravatar.cc/40?img=32" },
+  { name: "Chisom A.", role: "Client — Lagos",   quote: "I needed a logo urgently and got several offers within hours. The escrow process gave me total peace of mind.", color: "#0C6B38" },
+  { name: "David M.",  role: "Worker — Abuja",   quote: "I've been completing tasks consistently. Fast payouts and I've never had a payment dispute.", color: "#3B82F6" },
+  { name: "Sandra E.", role: "Client — Port Harcourt", quote: "HelpChain's verification system makes all the difference. Quality workers and a trustworthy process.", color: "#8B5CF6" },
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -329,7 +329,7 @@ export default function Home() {
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-7"
               style={{ background: "rgba(12,107,56,0.07)", border: "1px solid rgba(12,107,56,0.14)", color: "#0C6B38" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-[#0C6B38] animate-pulse" />
-              600+ active tasks right now
+              Nigeria's growing task marketplace
             </span>
           </motion.div>
 
@@ -394,16 +394,16 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Worker profile cards — real photos */}
+        {/* Worker profile cards */}
         <motion.div
           initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.6 }}
           className="mt-14 flex items-center justify-center gap-3 flex-wrap"
         >
           {[
-            { name: "Amaka U.",  cat: "Designer",   rating: "5.0", img: "https://i.pravatar.cc/40?img=47" },
-            { name: "James D.",  cat: "Developer",  rating: "4.9", img: "https://i.pravatar.cc/40?img=12" },
-            { name: "Fatima K.", cat: "Writer",     rating: "4.8", img: "https://i.pravatar.cc/40?img=28" },
-            { name: "Tobi A.",   cat: "Delivery",   rating: "5.0", img: "https://i.pravatar.cc/40?img=33" },
+            { name: "Amaka U.",  cat: "Designer",   rating: "5.0", color: "#0C6B38" },
+            { name: "James D.",  cat: "Developer",  rating: "4.9", color: "#3B82F6" },
+            { name: "Fatima K.", cat: "Writer",     rating: "4.8", color: "#8B5CF6" },
+            { name: "Tobi A.",   cat: "Delivery",   rating: "5.0", color: "#F97316" },
           ].map((w, i) => (
             <motion.div
               key={w.name}
@@ -411,11 +411,12 @@ export default function Home() {
               className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3"
               style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 6px rgba(0,0,0,0.05)" }}
             >
-              <img
-                src={w.img}
-                alt={w.name}
-                className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
-              />
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-xs font-bold"
+                style={{ background: w.color }}
+              >
+                {w.name.charAt(0)}
+              </div>
               <div>
                 <p className="text-xs font-semibold text-gray-800 leading-tight">{w.name}</p>
                 <p className="text-xs text-gray-400">{w.cat}</p>
@@ -444,11 +445,11 @@ export default function Home() {
           <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
             <div className="flex gap-3">
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-lg">
-                <p className="text-xl font-bold" style={{ color: "#0C6B38" }}>50K+</p>
+                <p className="text-xl font-bold" style={{ color: "#0C6B38" }}>5K+</p>
                 <p className="text-xs text-gray-500">Tasks Done</p>
               </div>
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-lg">
-                <p className="text-xl font-bold" style={{ color: "#0C6B38" }}>₦3B+</p>
+                <p className="text-xl font-bold" style={{ color: "#0C6B38" }}>₦50M+</p>
                 <p className="text-xs text-gray-500">Paid to Workers</p>
               </div>
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-lg">
@@ -975,13 +976,13 @@ export default function Home() {
                     <div className="flex items-center justify-between pt-3.5" style={{ borderTop: "1px solid #F5F5F5" }}>
                       <div>
                         <p className="text-base font-bold" style={{ color: "#0C6B38" }}>{task.budget}</p>
-                        <p className="text-xs text-gray-400">{task.bids} offers</p>
+                        <p className="text-xs text-gray-400">Budget</p>
                       </div>
                       <button
                         className="text-xs font-semibold px-4 py-2 rounded-lg transition-all"
                         style={{ background: "rgba(12,107,56,0.08)", color: "#0C6B38", border: "1px solid rgba(12,107,56,0.14)" }}
                       >
-                        Send Offer
+                        View Tasks
                       </button>
                     </div>
                   </div>
@@ -1074,11 +1075,12 @@ export default function Home() {
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed flex-1 mb-5">"{t.quote}"</p>
                   <div className="flex items-center gap-3">
-                    <img
-                      src={t.img}
-                      alt={t.name}
-                      className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
-                    />
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-bold"
+                      style={{ background: t.color }}
+                    >
+                      {t.name.charAt(0)}
+                    </div>
                     <div>
                       <p className="text-sm font-semibold text-[#0D0D0D]">{t.name}</p>
                       <p className="text-xs text-gray-400">{t.role}</p>
@@ -1099,7 +1101,7 @@ export default function Home() {
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Ready to get started?</h2>
               <p className="text-white/65 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
-                Join over 50,000 people already using HelpChain to post tasks, earn money, and get things done.
+                Join our growing community of clients and workers using HelpChain to post tasks, earn money, and get things done.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link href="/auth?mode=signup">

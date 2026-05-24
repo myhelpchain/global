@@ -136,9 +136,7 @@ export function useWallet() {
   });
 
   const initializeDeposit = async (amount: number) => {
-    const callbackUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/wallet`
-      : "https://helpchain.lovable.app/wallet";
+    const callbackUrl = `${window.location.origin}/wallet`;
     return initializeDepositMutation.mutateAsync({ amount, callbackUrl });
   };
 
