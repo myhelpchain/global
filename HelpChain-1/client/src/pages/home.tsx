@@ -27,18 +27,18 @@ const fadeUp = {
 const typingPhrases = ["home cleaning", "logo design", "furniture moving", "web development", "content writing", "tutoring help", "delivery runs"];
 
 const categories = [
-  { label: "Home Services",  icon: HomeIcon,      desc: "Cleaning, repairs, moving" },
-  { label: "Tech Help",      icon: Cpu,           desc: "Dev, IT support, software" },
-  { label: "Design",         icon: Paintbrush,    desc: "Graphics, UI/UX, branding" },
-  { label: "Writing",        icon: PenLine,       desc: "Content, copy, editing" },
-  { label: "Delivery",       icon: Package,       desc: "Packages, errands, logistics" },
-  { label: "Education",      icon: GraduationCap, desc: "Tutoring, mentoring" },
-  { label: "Marketing",      icon: Megaphone,     desc: "Social media, SEO, ads" },
-  { label: "Translation",    icon: Languages,     desc: "Documents, localization" },
-  { label: "Photography",    icon: Briefcase,     desc: "Events, portraits, product" },
-  { label: "Event Planning", icon: BarChart3,     desc: "Weddings, parties, corporate" },
-  { label: "Fitness",        icon: Zap,           desc: "Personal training, wellness" },
-  { label: "Cooking",        icon: HeartHandshake,desc: "Catering, meal prep, chef" },
+  { label: "Home Services",  icon: HomeIcon,      desc: "Cleaning, repairs, moving",        color: "#F97316", bg: "#FFF7ED", border: "#FED7AA" },
+  { label: "Tech Help",      icon: Cpu,           desc: "Dev, IT support, software",         color: "#3B82F6", bg: "#EFF6FF", border: "#BFDBFE" },
+  { label: "Design",         icon: Paintbrush,    desc: "Graphics, UI/UX, branding",         color: "#8B5CF6", bg: "#F5F3FF", border: "#DDD6FE" },
+  { label: "Writing",        icon: PenLine,       desc: "Content, copy, editing",             color: "#14B8A6", bg: "#F0FDFA", border: "#99F6E4" },
+  { label: "Delivery",       icon: Package,       desc: "Packages, errands, logistics",       color: "#EAB308", bg: "#FEFCE8", border: "#FEF08A" },
+  { label: "Education",      icon: GraduationCap, desc: "Tutoring, mentoring",                color: "#6366F1", bg: "#EEF2FF", border: "#C7D2FE" },
+  { label: "Marketing",      icon: Megaphone,     desc: "Social media, SEO, ads",             color: "#EC4899", bg: "#FDF2F8", border: "#FBCFE8" },
+  { label: "Translation",    icon: Languages,     desc: "Documents, localization",            color: "#06B6D4", bg: "#ECFEFF", border: "#A5F3FC" },
+  { label: "Photography",    icon: Briefcase,     desc: "Events, portraits, product",         color: "#A855F7", bg: "#FAF5FF", border: "#E9D5FF" },
+  { label: "Event Planning", icon: BarChart3,     desc: "Weddings, parties, corporate",       color: "#D946EF", bg: "#FDF4FF", border: "#F5D0FE" },
+  { label: "Fitness",        icon: Zap,           desc: "Personal training, wellness",        color: "#0C6B38", bg: "#F0FDF4", border: "#BBF7D0" },
+  { label: "Cooking",        icon: HeartHandshake,desc: "Catering, meal prep, chef",          color: "#EF4444", bg: "#FEF2F2", border: "#FECACA" },
 ];
 
 const steps = [
@@ -434,38 +434,62 @@ export default function Home() {
       </section>
 
       {/* ═══════ CATEGORIES ═══════ */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="flex items-end justify-between mb-10">
-          <div>
-            <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "#0C6B38" }}>Browse by category</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#0D0D0D]">Choose your category</h2>
+      <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAF8 100%)" }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "#0C6B38" }}>Browse by category</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#0D0D0D]">Choose your category</h2>
+              <p className="text-sm text-gray-400 mt-2">Find skilled helpers across every type of task</p>
+            </div>
+            <Link href="/discover">
+              <span className="hidden sm:flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer transition-all hover:-translate-y-0.5" style={{ color: "#0C6B38", background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+                View all <ChevronRight className="w-4 h-4" />
+              </span>
+            </Link>
           </div>
-          <Link href="/discover">
-            <span className="hidden sm:flex items-center gap-1 text-sm font-medium cursor-pointer hover:underline" style={{ color: "#0C6B38" }}>
-              View all <ChevronRight className="w-4 h-4" />
-            </span>
-          </Link>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {categories.map((cat, i) => (
-            <motion.div key={cat.label} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}>
-              <Link href={`/discover?category=${encodeURIComponent(cat.label)}`}>
-                <div
-                  className="group cursor-pointer bg-white rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5"
-                  style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
-                  onMouseOver={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(12,107,56,0.25)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 12px rgba(12,107,56,0.08)"; }}
-                  onMouseOut={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "#F0F0F0"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 group-hover:bg-[#0C6B38]/8 group-hover:border-[#0C6B38]/20 flex items-center justify-center mb-4 transition-all">
-                    <cat.icon className="w-5 h-5 text-gray-500 group-hover:text-[#0C6B38] transition-colors" strokeWidth={1.5} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {categories.map((cat, i) => (
+              <motion.div key={cat.label} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}>
+                <Link href={`/discover?category=${encodeURIComponent(cat.label)}`}>
+                  <div
+                    className="group cursor-pointer rounded-2xl p-5 transition-all duration-200 hover:-translate-y-1 relative overflow-hidden"
+                    style={{
+                      background: "#FFFFFF",
+                      border: `1px solid ${cat.border}`,
+                      boxShadow: `0 1px 4px rgba(0,0,0,0.05), 0 0 0 0 ${cat.color}20`,
+                    }}
+                    onMouseOver={e => {
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 24px rgba(0,0,0,0.08), 0 0 0 2px ${cat.color}30`;
+                      (e.currentTarget as HTMLDivElement).style.background = cat.bg;
+                    }}
+                    onMouseOut={e => {
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)";
+                      (e.currentTarget as HTMLDivElement).style.background = "#FFFFFF";
+                    }}
+                  >
+                    {/* subtle top accent bar */}
+                    <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl opacity-60" style={{ background: cat.color }} />
+
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-200"
+                      style={{ background: cat.bg, border: `1.5px solid ${cat.border}` }}
+                    >
+                      <cat.icon className="w-5 h-5 transition-colors" strokeWidth={1.75} style={{ color: cat.color }} />
+                    </div>
+                    <p className="font-semibold text-sm text-[#0D0D0D] mb-1 group-hover:text-[#0D0D0D] leading-snug">{cat.label}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed">{cat.desc}</p>
+
+                    {/* hover arrow */}
+                    <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <ArrowUpRight className="w-3.5 h-3.5" style={{ color: cat.color }} />
+                    </div>
                   </div>
-                  <p className="font-semibold text-sm text-[#0D0D0D] mb-1">{cat.label}</p>
-                  <p className="text-xs text-gray-400 leading-relaxed">{cat.desc}</p>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                </Link>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
