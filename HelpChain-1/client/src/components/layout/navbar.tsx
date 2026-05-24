@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { OnboardingBanner } from "@/components/ui/onboarding-banner";
 import { HelpChainLogo } from "@/components/ui/helpchain-logo";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -511,6 +512,7 @@ export function Navbar({ variant = 'default' }: NavbarProps) {
           )}
         </AnimatePresence>
       </motion.nav>
+      <OnboardingBanner />
     </>
   );
 }
