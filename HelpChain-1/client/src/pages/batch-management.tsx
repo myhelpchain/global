@@ -1,393 +1,283 @@
-import { useState } from "react";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { useTasksStore, type HelpTask, type TaskApplication } from "@/stores/tasks-store";
-import { useWalletLocalStore } from "@/stores/wallet-local-store";
-import { useLocalizationStore } from "@/stores/localization-store";
 import { useRoute, Link } from "wouter";
-import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
+import { Navbar } from "@/components/layout/navbar";
+import { useTask, useTaskOffers } from "@/hooks/use-tasks-api";
+import { useLocalizationStore } from "@/stores/localization-store";
+import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Users, Check, X, MessageSquare, Star, Shield, Clock,
-  CheckCircle2, ChevronLeft, Send, Eye, UserCheck, UserX,
-  Megaphone, FileCheck, DollarSign, AlertCircle
+  ChevronLeft, Loader2, ClipboardList, Users, CheckCircle,
+  Clock, Star, DollarSign, AlertCircle, ThumbsUp, ThumbsDown, MessageSquare
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { format } from "date-fns";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+const STATUS_COLORS: Record<string, string> = {
+  pending:   "bg-amber-50 text-amber-700 border-amber-200",
+  accepted:  "bg-green-50 text-green-700 border-green-200",
+  rejected:  "bg-red-50 text-red-700 border-red-200",
+  withdrawn: "bg-gray-50 text-gray-500 border-gray-200",
+  completed: "bg-purple-50 text-purple-700 border-purple-200",
+};
 
 export default function BatchManagementPage() {
   const [, params] = useRoute("/batch/:id");
   const taskId = params?.id;
-  const task = useTasksStore((s) => s.getTaskById(taskId || ""));
-  const { updateApplicationStatus, massApproveProofs } = useTasksStore();
-  const { lockEscrow, releaseEscrow } = useWalletLocalStore();
+  const { user } = useFirebaseAuth();
   const { formatLocal } = useLocalizationStore();
   const { toast } = useToast();
-  
-  const [selectedApp, setSelectedApp] = useState<TaskApplication | null>(null);
-  const [showBroadcast, setShowBroadcast] = useState(false);
-  const [broadcastMsg, setBroadcastMsg] = useState("");
-  const [showPitchDialog, setShowPitchDialog] = useState(false);
+  const [actingOfferId, setActingOfferId] = useState<string | null>(null);
 
-  if (!task) {
+  const { data: task, isLoading: taskLoading } = useTask(taskId);
+  const { offers, isLoading: offersLoading, acceptOffer, rejectOffer } = useTaskOffers(taskId);
+
+  const isRequester = task?.requester_id === user?.uid;
+
+  if (taskLoading || offersLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#F8FAF8]">
         <Navbar />
-        <div className="container mx-auto px-4 py-20 text-center">
-          <p className="text-muted-foreground mb-4">Task not found</p>
-          <Link href="/dashboard"><Button>Back to Dashboard</Button></Link>
+        <div className="flex items-center justify-center pt-32">
+          <Loader2 className="w-7 h-7 animate-spin text-[#0C6B38]" />
         </div>
       </div>
     );
   }
 
-  const hired = task.applications.filter(a => a.status === "hired" || a.status === "completed");
-  const pending = task.applications.filter(a => a.status === "sent" || a.status === "reviewed");
-  const shortlisted = task.applications.filter(a => a.status === "shortlisted");
-  const proofsSubmitted = hired.filter(a => a.proofSubmitted);
-  const proofsApproved = hired.filter(a => a.status === "completed");
-  const slotsRemaining = task.workerCount - task.slotsFilled;
-  const fillPercentage = (task.slotsFilled / task.workerCount) * 100;
+  if (!task) {
+    return (
+      <div className="min-h-screen bg-[#F8FAF8]">
+        <Navbar />
+        <div className="max-w-lg mx-auto px-4 pt-20 text-center">
+          <AlertCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 mb-4">Task not found</p>
+          <Link href="/dashboard">
+            <button className="text-sm font-semibold px-6 py-3 rounded-xl text-white" style={{ background: "#0C6B38" }}>
+              Back to Dashboard
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-  const handleHire = (app: TaskApplication) => {
-    if (slotsRemaining <= 0) {
-      toast({ title: "All slots filled", description: "No more slots available for this task.", variant: "destructive" });
-      return;
+  const pendingOffers = offers.filter(o => o.status === "pending");
+  const acceptedOffers = offers.filter(o => o.status === "accepted");
+  const rejectedOffers = offers.filter(o => o.status === "rejected");
+
+  const handleAccept = async (offerId: string) => {
+    setActingOfferId(offerId);
+    try {
+      await acceptOffer(offerId);
+      toast({ title: "Offer accepted", description: "The helper has been hired for this task." });
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast({ title: "Failed to accept", description: err.message || "Something went wrong", variant: "destructive" });
+    } finally {
+      setActingOfferId(null);
     }
-    updateApplicationStatus(task.id, app.id, "hired");
-    lockEscrow(app.offerAmount, `Escrow for ${app.workerName} — ${task.title}`);
-    toast({ title: "Worker Hired!", description: `${app.workerName} has been hired. ${formatLocal(app.offerAmount)} locked in escrow.` });
   };
 
-  const handleReject = (app: TaskApplication) => {
-    updateApplicationStatus(task.id, app.id, "rejected");
-    toast({ title: "Application Rejected", description: `${app.workerName}'s application was declined.` });
-  };
-
-  const handleShortlist = (app: TaskApplication) => {
-    updateApplicationStatus(task.id, app.id, "shortlisted");
-    toast({ title: "Shortlisted", description: `${app.workerName} has been shortlisted.` });
-  };
-
-  const handleMassApprove = () => {
-    massApproveProofs(task.id);
-    proofsSubmitted.forEach(app => {
-      releaseEscrow(app.offerAmount, app.workerId);
-    });
-    toast({ title: "All Proofs Approved!", description: `Payments released for ${proofsSubmitted.length} workers.` });
-  };
-
-  const handleBroadcast = () => {
-    toast({ title: "Message Broadcast!", description: `Sent to ${hired.length} hired workers.` });
-    setShowBroadcast(false);
-    setBroadcastMsg("");
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      sent: "bg-slate-100 text-slate-700",
-      reviewed: "bg-blue-100 text-blue-700",
-      shortlisted: "bg-amber-100 text-amber-700",
-      hired: "bg-green-100 text-green-700",
-      rejected: "bg-red-100 text-red-700",
-      completed: "bg-emerald-100 text-emerald-700",
-    };
-    return colors[status] || "bg-slate-100 text-slate-700";
+  const handleReject = async (offerId: string) => {
+    setActingOfferId(offerId);
+    try {
+      await rejectOffer(offerId);
+      toast({ title: "Offer declined" });
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast({ title: "Failed to decline", description: err.message || "Something went wrong", variant: "destructive" });
+    } finally {
+      setActingOfferId(null);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F8FAF8]">
       <Navbar />
-      
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Back */}
-        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="mb-6">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm"><ChevronLeft className="w-4 h-4 mr-1" /> Back to Dashboard</Button>
-          </Link>
-        </motion.div>
 
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-            <div>
-              <Badge className="mb-2 bg-accent/10 text-accent"><Users className="w-3 h-3 mr-1" /> Batch Management</Badge>
-              <h1 className="text-3xl font-bold mb-2">{task.title}</h1>
-              <p className="text-muted-foreground">{task.description.slice(0, 120)}...</p>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowBroadcast(true)}>
-                <Megaphone className="w-4 h-4 mr-2" /> Broadcast
-              </Button>
-              {proofsSubmitted.length > 0 && (
-                <Button onClick={handleMassApprove} className="bg-green-600 hover:bg-green-700">
-                  <FileCheck className="w-4 h-4 mr-2" /> Mass Approve ({proofsSubmitted.length})
-                </Button>
-              )}
+      <main className="max-w-3xl mx-auto px-4 pb-10">
+        <div className="py-4">
+          <Link href={`/request/${taskId}`}>
+            <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#0C6B38] transition-colors font-medium">
+              <ChevronLeft className="w-4 h-4" /> Back to Task
+            </button>
+          </Link>
+        </div>
+
+        {/* Task header */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="bg-white rounded-2xl p-6 mb-5" style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-[#E8F5EF] flex items-center justify-center shrink-0">
+                <ClipboardList className="w-5 h-5 text-[#0C6B38]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-[#0D0D0D] mb-1">{task.title}</h1>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-3">{task.description}</p>
+                <div className="flex flex-wrap gap-3">
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <DollarSign className="w-3.5 h-3.5" /> Budget: <strong className="text-[#0C6B38]">{formatLocal(task.budget)}</strong>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <Users className="w-3.5 h-3.5" /> {offers.length} offer{offers.length !== 1 ? "s" : ""}
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <Clock className="w-3.5 h-3.5" /> {format(new Date(task.created_at), "MMM d, yyyy")}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Stats Cards */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <UserCheck className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <p className="text-2xl font-bold">{task.slotsFilled}</p>
-              <p className="text-xs text-muted-foreground">Hired</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <Clock className="w-6 h-6 mx-auto mb-2 text-amber-500" />
-              <p className="text-2xl font-bold">{slotsRemaining}</p>
-              <p className="text-xs text-muted-foreground">Slots Left</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <p className="text-2xl font-bold">{task.applications.length}</p>
-              <p className="text-xs text-muted-foreground">Applications</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <FileCheck className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-              <p className="text-2xl font-bold">{proofsSubmitted.length}</p>
-              <p className="text-xs text-muted-foreground">Proofs</p>
-            </CardContent>
-          </Card>
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <DollarSign className="w-6 h-6 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{formatLocal(task.totalEscrowed)}</p>
-              <p className="text-xs text-muted-foreground">Escrowed</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {/* Summary stats */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {[
+            { label: "Pending", value: pendingOffers.length, color: "#d97706", icon: Clock },
+            { label: "Accepted", value: acceptedOffers.length, color: "#059669", icon: CheckCircle },
+            { label: "Declined", value: rejectedOffers.length, color: "#dc2626", icon: AlertCircle },
+          ].map(({ label, value, color, icon: Icon }) => (
+            <div key={label} className="bg-white rounded-2xl p-4 text-center" style={{ border: "1px solid #F0F0F0" }}>
+              <Icon className="w-5 h-5 mx-auto mb-1" style={{ color }} />
+              <p className="text-xl font-bold text-[#0D0D0D]">{value}</p>
+              <p className="text-xs text-gray-400">{label}</p>
+            </div>
+          ))}
+        </div>
 
-        {/* Progress Bar */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mb-8">
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold">Hiring Progress</h3>
-                <span className="text-sm font-medium">{task.slotsFilled}/{task.workerCount} workers</span>
-              </div>
-              <Progress value={fillPercentage} className="h-3 mb-2" />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Hired: {hired.length}</span>
-                <span>Shortlisted: {shortlisted.length}</span>
-                <span>Pending: {pending.length}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Worker Table */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="border-0 shadow-sm overflow-hidden">
-            <CardContent className="p-0">
-              <div className="p-4 border-b bg-slate-50 dark:bg-slate-900">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  All Applications ({task.applications.length})
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Worker</TableHead>
-                      <TableHead>Trust Score</TableHead>
-                      <TableHead>Rep</TableHead>
-                      <TableHead>Offer</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Proof</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {task.applications.map((app) => (
-                      <TableRow key={app.id} className="hover:bg-slate-50/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-9 h-9">
-                              <AvatarImage src={app.workerAvatar} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                {app.workerName.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-sm">{app.workerName}</p>
-                              <p className="text-xs text-muted-foreground">{app.estimatedTime}</p>
-                            </div>
+        {/* Offers list */}
+        {offers.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="bg-white rounded-2xl p-12 text-center" style={{ border: "1px solid #F0F0F0" }}>
+              <Users className="w-10 h-10 text-gray-200 mx-auto mb-4" />
+              <p className="font-semibold text-[#0D0D0D] mb-1">No offers yet</p>
+              <p className="text-sm text-gray-400">Helpers will show up here once they submit their offers.</p>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="space-y-3">
+            {/* Pending section */}
+            {pendingOffers.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-500 mb-2 px-1">Pending Review ({pendingOffers.length})</h2>
+                {pendingOffers.map((offer, i) => (
+                  <motion.div key={offer.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                    <div className="bg-white rounded-2xl p-5 mb-3" style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+                      <div className="flex items-start gap-3">
+                        <Avatar className="w-10 h-10 shrink-0">
+                          <AvatarImage src={offer.profiles?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-[#0C6B38]/10 text-[#0C6B38] font-bold text-sm">
+                            {offer.profiles?.full_name?.[0]?.toUpperCase() || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <p className="font-semibold text-[#0D0D0D] text-sm">{offer.profiles?.full_name || "Helper"}</p>
+                            <span className="text-sm font-bold" style={{ color: "#0C6B38" }}>
+                              {offer.amount > 0 ? formatLocal(offer.amount) : "Open"}
+                            </span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span className="font-medium text-sm">{app.workerRating}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            <Shield className="w-3 h-3 mr-1" />
-                            {app.workerReputation}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-semibold text-sm text-primary">{formatLocal(app.offerAmount)}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {app.proofSubmitted ? (
-                            <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3 mr-1" /> Submitted</Badge>
-                          ) : app.status === "hired" ? (
-                            <Badge variant="outline" className="text-xs">Pending</Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
+                          {offer.profiles?.location && (
+                            <p className="text-xs text-gray-400 mb-2">{offer.profiles.location}</p>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 justify-end">
-                            <Button
-                              variant="ghost" size="icon" className="h-8 w-8"
-                              onClick={() => { setSelectedApp(app); setShowPitchDialog(true); }}
-                              title="View pitch"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            
-                            {(app.status === "sent" || app.status === "reviewed") && (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                  onClick={() => handleShortlist(app)} title="Shortlist">
-                                  <Star className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  onClick={() => handleHire(app)} title="Hire">
-                                  <Check className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => handleReject(app)} title="Reject">
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                            
-                            {app.status === "shortlisted" && (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  onClick={() => handleHire(app)} title="Hire">
-                                  <UserCheck className="w-4 h-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  onClick={() => handleReject(app)} title="Reject">
-                                  <UserX className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          {(offer.profiles?.total_tasks_done || 0) > 0 && (
+                            <div className="flex items-center gap-1 mb-2">
+                              <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                              <span className="text-xs text-gray-500">
+                                {offer.profiles?.reputation_score?.toFixed(1)} · {offer.profiles?.total_tasks_done} tasks done
+                              </span>
+                            </div>
+                          )}
+                          <p className="text-sm text-gray-600 mb-3 leading-relaxed">{offer.message}</p>
+                          {offer.delivery_time && (
+                            <p className="text-xs text-gray-400 mb-3">
+                              <Clock className="w-3 h-3 inline mr-1" />Delivery: {offer.delivery_time}
+                            </p>
+                          )}
+                          {isRequester && task.status === "open" && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAccept(offer.id)}
+                                disabled={actingOfferId === offer.id}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                                style={{ background: "#0C6B38" }}
+                              >
+                                {actingOfferId === offer.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
+                                Hire
+                              </button>
+                              <button
+                                onClick={() => handleReject(offer.id)}
+                                disabled={actingOfferId === offer.id}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                              >
+                                <ThumbsDown className="w-4 h-4" /> Decline
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+            )}
 
-      <Footer />
+            {/* Accepted section */}
+            {acceptedOffers.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold text-gray-500 mb-2 px-1">Hired ({acceptedOffers.length})</h2>
+                {acceptedOffers.map((offer) => (
+                  <div key={offer.id} className="bg-white rounded-2xl p-5 mb-3" style={{ border: "1px solid #F0F0F0" }}>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarImage src={offer.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-green-50 text-green-700 font-bold text-sm">
+                          {offer.profiles?.full_name?.[0]?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[#0D0D0D] text-sm">{offer.profiles?.full_name || "Helper"}</p>
+                        <p className="text-xs text-gray-400 truncate">{offer.message}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">Hired</span>
+                        {offer.amount > 0 && (
+                          <span className="text-sm font-bold" style={{ color: "#0C6B38" }}>{formatLocal(offer.amount)}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-      {/* Pitch Dialog */}
-      <Dialog open={showPitchDialog} onOpenChange={setShowPitchDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={selectedApp?.workerAvatar} />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  {selectedApp?.workerName?.[0]}
-                </AvatarFallback>
-              </Avatar>
+            {/* Rejected section */}
+            {rejectedOffers.length > 0 && (
               <div>
-                <p>{selectedApp?.workerName}</p>
-                <div className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
-                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                  {selectedApp?.workerRating} • Rep: {selectedApp?.workerReputation}
-                </div>
-              </div>
-            </DialogTitle>
-            <DialogDescription>Worker's pitch for this task</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Pitch</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
-                {selectedApp?.pitchText}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
-                <p className="text-xs text-muted-foreground">Offer Amount</p>
-                <p className="font-bold text-primary">{selectedApp?.offerAmount ? formatLocal(selectedApp.offerAmount) : '-'}</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg">
-                <p className="text-xs text-muted-foreground">Est. Time</p>
-                <p className="font-bold">{selectedApp?.estimatedTime}</p>
-              </div>
-            </div>
-            {selectedApp?.portfolioTaskIds && selectedApp.portfolioTaskIds.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-sm mb-2">Portfolio References</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedApp.portfolioTaskIds.map((id) => (
-                    <Badge key={id} variant="outline" className="text-xs">{id}</Badge>
-                  ))}
-                </div>
+                <h2 className="text-sm font-semibold text-gray-500 mb-2 px-1">Declined ({rejectedOffers.length})</h2>
+                {rejectedOffers.map((offer) => (
+                  <div key={offer.id} className="bg-white rounded-2xl p-5 mb-3 opacity-60" style={{ border: "1px solid #F0F0F0" }}>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarImage src={offer.profiles?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-gray-100 text-gray-500 font-bold text-sm">
+                          {offer.profiles?.full_name?.[0]?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-[#0D0D0D] text-sm">{offer.profiles?.full_name || "Helper"}</p>
+                        <p className="text-xs text-gray-400 truncate">{offer.message}</p>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-red-50 text-red-600 border-red-200 shrink-0">Declined</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Broadcast Dialog */}
-      <Dialog open={showBroadcast} onOpenChange={setShowBroadcast}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Megaphone className="w-5 h-5" /> Broadcast to All Hired Workers
-            </DialogTitle>
-            <DialogDescription>Send a message to all {hired.length} hired workers</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              placeholder="Type your message to all workers..."
-              value={broadcastMsg}
-              onChange={(e) => setBroadcastMsg(e.target.value)}
-              className="min-h-[120px]"
-            />
-            <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setShowBroadcast(false)}>Cancel</Button>
-              <Button onClick={handleBroadcast} disabled={!broadcastMsg.trim()}>
-                <Send className="w-4 h-4 mr-2" /> Send to {hired.length} workers
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </main>
     </div>
   );
 }

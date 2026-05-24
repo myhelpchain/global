@@ -3,66 +3,70 @@ import { Footer } from "@/components/layout/footer";
 import {
   Plus, Search, ClipboardList, Wallet, TrendingUp,
   Star, Clock, CheckCircle, ArrowRight, Bell,
-  BarChart3, Activity, Eye, EyeOff, ChevronRight
+  BarChart3, Activity, Eye, EyeOff, ChevronRight, Loader2, MessageCircle
 } from "lucide-react";
 import { Link, Redirect } from "wouter";
 import { motion } from "framer-motion";
-import { useTasksStore } from "@/stores/tasks-store";
-import { useProfileStore } from "@/stores/profile-store";
 import { useLocalizationStore } from "@/stores/localization-store";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useWallet } from "@/hooks/use-wallet";
+import { useTasksApi } from "@/hooks/use-tasks-api";
 import { useState } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
-  published:   "bg-blue-50 text-blue-700 border-blue-200",
+  open:        "bg-blue-50 text-blue-700 border-blue-200",
   in_progress: "bg-amber-50 text-amber-700 border-amber-200",
-  accepted:    "bg-indigo-50 text-indigo-700 border-indigo-200",
   completed:   "bg-green-50 text-green-700 border-green-200",
   cancelled:   "bg-red-50 text-red-700 border-red-200",
-  created:     "bg-gray-50 text-gray-600 border-gray-200",
+  published:   "bg-blue-50 text-blue-700 border-blue-200",
+  accepted:    "bg-indigo-50 text-indigo-700 border-indigo-200",
   reviewed:    "bg-purple-50 text-purple-700 border-purple-200",
+  created:     "bg-gray-50 text-gray-600 border-gray-200",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "Open", in_progress: "In Progress", completed: "Completed",
+  cancelled: "Cancelled", published: "Open", accepted: "Assigned",
 };
 
 export default function Dashboard() {
   const { user } = useFirebaseAuth();
   const { availableBalance, escrowBalance } = useWallet();
   const { formatLocal } = useLocalizationStore();
-  const tasks = useTasksStore((s) => s.tasks);
-  const currentProfile = useProfileStore((s) => s.getCurrentProfile());
+  const { myTasks, tasksLoading } = useTasksApi();
   const [hideBalance, setHideBalance] = useState(false);
 
   if (!user) return <Redirect to="/auth" />;
 
-  const displayName = user.displayName || currentProfile?.fullName || "User";
+  const displayName = user.displayName || "User";
   const firstName = displayName.split(" ")[0];
   const avatar = user.photoURL || null;
   const initials = displayName.charAt(0).toUpperCase();
 
-  const myTasks = tasks.filter((t) => t.creatorId === user.uid);
-  const myApplications = tasks.filter((t) => t.applications.some((a) => a.workerId === user.uid));
-  const activeTasks = myTasks.filter((t) => ["published", "in_progress", "accepted"].includes(t.status));
-  const completedTasks = myTasks.filter((t) => t.status === "completed");
-  const pendingApps = myApplications.filter((t) => t.applications.some((a) => a.workerId === user.uid && a.status === "sent"));
+  const myPostedTasks = myTasks.filter((t) => t.requester_id === user.uid);
+  const myHelperTasks = myTasks.filter((t) => t.helper_id === user.uid);
+  const activeTasks = myPostedTasks.filter((t) => ["open", "in_progress"].includes(t.status));
+  const completedTasks = myPostedTasks.filter((t) => t.status === "completed");
+  const activeHelping = myHelperTasks.filter((t) => t.status === "in_progress");
 
-  const recentTasks = [...myTasks, ...myApplications]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  const recentTasks = [...myPostedTasks, ...myHelperTasks]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
   const masked = "₦ ••••••";
 
   const widgets = [
-    { label: "Active Tasks",   value: activeTasks.length,   icon: Activity,      color: "#0C6B38" },
-    { label: "Tasks Posted",   value: myTasks.length,       icon: ClipboardList, color: "#1d4ed8" },
-    { label: "Completed",      value: completedTasks.length,icon: CheckCircle,   color: "#059669" },
-    { label: "Pending Offers", value: pendingApps.length,   icon: Clock,         color: "#d97706" },
+    { label: "Active Tasks",   value: activeTasks.length,    icon: Activity,      color: "#0C6B38" },
+    { label: "Tasks Posted",   value: myPostedTasks.length,  icon: ClipboardList, color: "#1d4ed8" },
+    { label: "Completed",      value: completedTasks.length, icon: CheckCircle,   color: "#059669" },
+    { label: "Helping",        value: activeHelping.length,  icon: TrendingUp,    color: "#d97706" },
   ];
 
   const quickActions = [
-    { label: "Post a Task",  href: "/create-request", icon: Plus,    sub: "Hire someone fast"    },
-    { label: "Find Tasks",   href: "/discover",        icon: Search,  sub: "Browse opportunities" },
-    { label: "My Wallet",    href: "/wallet",          icon: Wallet,  sub: "View & top up balance"},
-    { label: "Messages",     href: "/messages",        icon: Bell,    sub: "Inbox & notifications"},
+    { label: "Post a Task",  href: "/create-request", icon: Plus,          sub: "Hire someone fast"     },
+    { label: "Find Tasks",   href: "/discover",        icon: Search,        sub: "Browse opportunities"  },
+    { label: "My Wallet",    href: "/wallet",          icon: Wallet,        sub: "View & top up balance" },
+    { label: "Messages",     href: "/messages",        icon: MessageCircle, sub: "Chat with clients"     },
   ];
 
   return (
@@ -71,7 +75,7 @@ export default function Dashboard() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
 
-        {/* ── Greeting Header ── */}
+        {/* Greeting */}
         <motion.div
           initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
@@ -99,7 +103,7 @@ export default function Dashboard() {
           </Link>
         </motion.div>
 
-        {/* ── Balance Card ── */}
+        {/* Balance Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="rounded-3xl p-7 mb-6 text-white relative overflow-hidden"
@@ -132,15 +136,15 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* ── Stat widgets ── */}
+        {/* Stat widgets */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {widgets.map((w, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 + i * 0.05 }}>
               <div className="bg-white rounded-2xl p-5" style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4" style={{ background: `${w.color}15` }}>
-                  <w.icon className="w-4.5 h-4.5" style={{ color: w.color }} />
+                  <w.icon className="w-4 h-4" style={{ color: w.color }} />
                 </div>
-                <p className="text-2xl font-bold text-[#0D0D0D]">{w.value}</p>
+                <p className="text-2xl font-bold text-[#0D0D0D]">{tasksLoading ? "—" : w.value}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{w.label}</p>
               </div>
             </motion.div>
@@ -149,7 +153,7 @@ export default function Dashboard() {
 
         <div className="grid lg:grid-cols-3 gap-5">
 
-          {/* ── Recent Tasks ── */}
+          {/* Recent Tasks */}
           <div className="lg:col-span-2 space-y-5">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
               <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "1px solid #F0F0F0" }}>
@@ -157,22 +161,23 @@ export default function Dashboard() {
                   <h2 className="font-semibold text-[#0D0D0D] text-sm">Recent Tasks</h2>
                   <Link href="/discover">
                     <span className="text-xs font-medium flex items-center gap-1 cursor-pointer" style={{ color: "#0C6B38" }}>
-                      View all <ChevronRight className="w-3.5 h-3.5" />
+                      Find Tasks <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </Link>
                 </div>
 
-                {recentTasks.length === 0 ? (
+                {tasksLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+                  </div>
+                ) : recentTasks.length === 0 ? (
                   <div className="text-center py-14">
                     <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
                       <ClipboardList className="w-6 h-6 text-gray-300" />
                     </div>
                     <p className="text-sm text-gray-400 mb-4">No tasks yet — post your first!</p>
                     <Link href="/create-request">
-                      <button
-                        className="text-xs font-semibold px-5 py-2.5 rounded-xl text-white transition-all"
-                        style={{ background: "#0C6B38" }}
-                      >
+                      <button className="text-xs font-semibold px-5 py-2.5 rounded-xl text-white" style={{ background: "#0C6B38" }}>
                         Post a Task
                       </button>
                     </Link>
@@ -181,6 +186,7 @@ export default function Dashboard() {
                   <div className="divide-y divide-gray-50">
                     {recentTasks.map((task) => {
                       const statusClass = STATUS_COLORS[task.status] || STATUS_COLORS.created;
+                      const isHelper = task.helper_id === user.uid;
                       return (
                         <Link key={task.id} href={`/request/${task.id}`}>
                           <div className="flex items-center gap-4 px-6 py-3.5 hover:bg-[#F8FAF8] transition-colors cursor-pointer">
@@ -189,10 +195,12 @@ export default function Dashboard() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-[#0D0D0D] truncate">{task.title}</p>
-                              <p className="text-xs text-gray-400">{task.applications.length} offers · {task.category.replace(/_/g, " ")}</p>
+                              <p className="text-xs text-gray-400">
+                                {isHelper ? "You're helping" : "Posted by you"} · {task.category.replace(/_/g, " ")}
+                              </p>
                             </div>
-                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${statusClass}`}>
-                              {task.status.replace(/_/g, " ")}
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize whitespace-nowrap ${statusClass}`}>
+                              {STATUS_LABELS[task.status] || task.status.replace(/_/g, " ")}
                             </span>
                           </div>
                         </Link>
@@ -203,19 +211,19 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            {/* ── Performance ── */}
+            {/* Performance */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <div className="bg-white rounded-2xl p-6" style={{ border: "1px solid #F0F0F0" }}>
                 <div className="flex items-center gap-2 mb-5">
                   <BarChart3 className="w-4 h-4 text-gray-400" />
-                  <h2 className="font-semibold text-[#0D0D0D] text-sm">Performance</h2>
+                  <h2 className="font-semibold text-[#0D0D0D] text-sm">Activity Summary</h2>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
-                    { label: "Rating",      value: `${currentProfile?.rating?.toFixed(1) || "0.0"} ★`, color: "#f59e0b" },
-                    { label: "Rep Score",   value: currentProfile?.reputationScore || 0,               color: "#0C6B38" },
-                    { label: "Success",     value: `${currentProfile?.successRate || 0}%`,             color: "#1d4ed8" },
-                    { label: "Done",        value: currentProfile?.helpsGiven || 0,                    color: "#059669" },
+                    { label: "Posted",    value: myPostedTasks.length,  color: "#1d4ed8" },
+                    { label: "Helping",   value: myHelperTasks.length,  color: "#d97706" },
+                    { label: "Done",      value: completedTasks.length, color: "#059669" },
+                    { label: "In Escrow", value: escrowBalance > 0 ? formatLocal(escrowBalance) : "₦0", color: "#0C6B38" },
                   ].map((m) => (
                     <div key={m.label} className="text-center p-3 rounded-xl bg-[#F8FAF8]">
                       <p className="text-xl font-bold mb-0.5" style={{ color: m.color }}>{m.value}</p>
@@ -227,9 +235,8 @@ export default function Dashboard() {
             </motion.div>
           </div>
 
-          {/* ── Sidebar ── */}
+          {/* Sidebar */}
           <div className="space-y-5">
-            {/* Quick Actions */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
               <div className="bg-white rounded-2xl overflow-hidden" style={{ border: "1px solid #F0F0F0" }}>
                 <div className="px-5 py-4" style={{ borderBottom: "1px solid #F5F5F5" }}>
@@ -254,12 +261,8 @@ export default function Dashboard() {
               </div>
             </motion.div>
 
-            {/* Profile completion hint */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
-              <div
-                className="rounded-2xl p-5"
-                style={{ background: "linear-gradient(135deg, #0C6B38 0%, #0a5a30 100%)" }}
-              >
+              <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, #0C6B38 0%, #0a5a30 100%)" }}>
                 <Star className="w-7 h-7 text-white/60 mb-3" />
                 <h3 className="text-sm font-bold text-white mb-1">Complete your profile</h3>
                 <p className="text-xs text-white/60 leading-relaxed mb-4">
@@ -272,6 +275,31 @@ export default function Dashboard() {
                 </Link>
               </div>
             </motion.div>
+
+            {/* Helpful tip if no tasks */}
+            {!tasksLoading && myPostedTasks.length === 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+                <div className="rounded-2xl p-5 bg-white" style={{ border: "1px solid #F0F0F0" }}>
+                  <Bell className="w-6 h-6 text-[#0C6B38] mb-2" />
+                  <h3 className="text-sm font-bold text-[#0D0D0D] mb-1">Get started</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed mb-3">
+                    Post your first task or browse available tasks to start earning.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <Link href="/create-request">
+                      <button className="w-full text-xs font-semibold py-2 rounded-lg text-white" style={{ background: "#0C6B38" }}>
+                        Post a Task
+                      </button>
+                    </Link>
+                    <Link href="/discover">
+                      <button className="w-full text-xs font-semibold py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                        Browse Tasks
+                      </button>
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </main>
