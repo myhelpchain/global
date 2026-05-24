@@ -457,12 +457,12 @@ export default function Home() {
                     className="group cursor-pointer rounded-2xl p-5 transition-all duration-200 hover:-translate-y-1 relative overflow-hidden"
                     style={{
                       background: "#FFFFFF",
-                      border: `1px solid ${cat.border}`,
-                      boxShadow: `0 1px 4px rgba(0,0,0,0.05), 0 0 0 0 ${cat.color}20`,
+                      border: "1px solid #BBF7D0",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                     }}
                     onMouseOver={e => {
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 24px rgba(0,0,0,0.08), 0 0 0 2px ${cat.color}30`;
-                      (e.currentTarget as HTMLDivElement).style.background = cat.bg;
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.08), 0 0 0 2px rgba(12,107,56,0.2)";
+                      (e.currentTarget as HTMLDivElement).style.background = "#F0FDF4";
                     }}
                     onMouseOut={e => {
                       (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)";
@@ -470,20 +470,20 @@ export default function Home() {
                     }}
                   >
                     {/* subtle top accent bar */}
-                    <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl opacity-60" style={{ background: cat.color }} />
+                    <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl opacity-60" style={{ background: "#0C6B38" }} />
 
                     <div
                       className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-200"
-                      style={{ background: cat.bg, border: `1.5px solid ${cat.border}` }}
+                      style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}
                     >
-                      <cat.icon className="w-5 h-5 transition-colors" strokeWidth={1.75} style={{ color: cat.color }} />
+                      <cat.icon className="w-5 h-5 transition-colors" strokeWidth={1.75} style={{ color: "#0C6B38" }} />
                     </div>
                     <p className="font-semibold text-sm text-[#0D0D0D] mb-1 group-hover:text-[#0D0D0D] leading-snug">{cat.label}</p>
                     <p className="text-xs text-gray-400 leading-relaxed">{cat.desc}</p>
 
                     {/* hover arrow */}
                     <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <ArrowUpRight className="w-3.5 h-3.5" style={{ color: cat.color }} />
+                      <ArrowUpRight className="w-3.5 h-3.5" style={{ color: "#0C6B38" }} />
                     </div>
                   </div>
                 </Link>
