@@ -434,9 +434,9 @@ export default function Home() {
       </section>
 
       {/* ═══════ CATEGORIES ═══════ */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAF8 100%)" }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-end justify-between mb-10">
+      <section className="py-12 px-4 sm:px-6 lg:px-8" style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAF8 100%)" }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-end justify-between mb-6">
             <div>
               <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "#0C6B38" }}>Browse by category</p>
               <h2 className="text-3xl md:text-4xl font-bold text-[#0D0D0D]">Choose your category</h2>
@@ -449,19 +449,19 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
             {categories.map((cat, i) => (
               <motion.div key={cat.label} variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i}>
                 <Link href={`/discover?category=${encodeURIComponent(cat.label)}`}>
                   <div
-                    className="group cursor-pointer rounded-2xl p-5 transition-all duration-200 hover:-translate-y-1 relative overflow-hidden"
+                    className="group cursor-pointer rounded-xl p-3.5 sm:p-4 transition-all duration-200 hover:-translate-y-0.5 relative overflow-hidden"
                     style={{
                       background: "#FFFFFF",
                       border: "1px solid #BBF7D0",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                     }}
                     onMouseOver={e => {
-                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.08), 0 0 0 2px rgba(12,107,56,0.2)";
+                      (e.currentTarget as HTMLDivElement).style.boxShadow = "0 6px 18px rgba(0,0,0,0.07), 0 0 0 2px rgba(12,107,56,0.18)";
                       (e.currentTarget as HTMLDivElement).style.background = "#F0FDF4";
                     }}
                     onMouseOut={e => {
@@ -470,20 +470,20 @@ export default function Home() {
                     }}
                   >
                     {/* subtle top accent bar */}
-                    <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl opacity-60" style={{ background: "#0C6B38" }} />
+                    <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-xl opacity-60" style={{ background: "#0C6B38" }} />
 
                     <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-all duration-200"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center mb-2.5 transition-all duration-200"
                       style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0" }}
                     >
-                      <cat.icon className="w-5 h-5 transition-colors" strokeWidth={1.75} style={{ color: "#0C6B38" }} />
+                      <cat.icon className="w-4 h-4 transition-colors" strokeWidth={1.75} style={{ color: "#0C6B38" }} />
                     </div>
-                    <p className="font-semibold text-sm text-[#0D0D0D] mb-1 group-hover:text-[#0D0D0D] leading-snug">{cat.label}</p>
-                    <p className="text-xs text-gray-400 leading-relaxed">{cat.desc}</p>
+                    <p className="font-semibold text-xs sm:text-sm text-[#0D0D0D] mb-0.5 group-hover:text-[#0D0D0D] leading-snug">{cat.label}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed hidden sm:block">{cat.desc}</p>
 
                     {/* hover arrow */}
-                    <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <ArrowUpRight className="w-3.5 h-3.5" style={{ color: "#0C6B38" }} />
+                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <ArrowUpRight className="w-3 h-3" style={{ color: "#0C6B38" }} />
                     </div>
                   </div>
                 </Link>
