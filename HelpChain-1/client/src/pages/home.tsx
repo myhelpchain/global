@@ -509,67 +509,193 @@ export default function Home() {
               {
                 ...steps[0],
                 svg: (
+                  /* Character enthusiastically typing on laptop — Post Your Task */
                   <svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <rect width="280" height="180" fill="#E8F5EF"/>
-                    <rect x="60" y="40" width="160" height="110" rx="12" fill="white" stroke="#0C6B38" strokeWidth="2"/>
-                    <rect x="75" y="58" width="90" height="8" rx="4" fill="#0C6B38" opacity="0.3"/>
-                    <rect x="75" y="74" width="130" height="6" rx="3" fill="#E5E7EB"/>
-                    <rect x="75" y="86" width="110" height="6" rx="3" fill="#E5E7EB"/>
-                    <rect x="75" y="98" width="120" height="6" rx="3" fill="#E5E7EB"/>
-                    <rect x="75" y="118" width="70" height="20" rx="6" fill="#0C6B38"/>
-                    <rect x="151" y="122" width="50" height="12" rx="4" fill="white" opacity="0.3"/>
-                    <circle cx="215" cy="55" r="22" fill="#0C6B38" opacity="0.12"/>
-                    <circle cx="215" cy="55" r="14" fill="#0C6B38" opacity="0.2"/>
-                    <path d="M209 55l4 4 7-7" stroke="#0C6B38" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="65" cy="40" r="18" fill="#F0FDF4"/>
-                    <rect x="58" y="33" width="14" height="14" rx="3" fill="#0C6B38" opacity="0.2"/>
-                    <path d="M62 40h6M65 37v6" stroke="#0C6B38" strokeWidth="2" strokeLinecap="round"/>
+                    {/* Laptop screen */}
+                    <rect x="142" y="34" width="118" height="88" rx="9" fill="white" stroke="#0C6B38" strokeWidth="2"/>
+                    <rect x="142" y="34" width="118" height="20" rx="9" fill="#0C6B38"/>
+                    <rect x="142" y="46" width="118" height="8" fill="#0C6B38"/>
+                    <circle cx="155" cy="44" r="3" fill="white" opacity="0.5"/>
+                    <circle cx="165" cy="44" r="3" fill="white" opacity="0.5"/>
+                    <circle cx="175" cy="44" r="3" fill="white" opacity="0.5"/>
+                    <rect x="156" y="62" width="44" height="6" rx="3" fill="#0C6B38" opacity="0.35"/>
+                    <rect x="156" y="74" width="86" height="5" rx="2.5" fill="#D1D5DB"/>
+                    <rect x="156" y="85" width="70" height="5" rx="2.5" fill="#D1D5DB"/>
+                    <rect x="156" y="96" width="78" height="5" rx="2.5" fill="#D1D5DB"/>
+                    <rect x="156" y="108" width="46" height="10" rx="4" fill="#0C6B38"/>
+                    <rect x="202" y="62" width="2" height="9" rx="1" fill="#0C6B38"/>
+                    {/* Keyboard */}
+                    <rect x="132" y="122" width="138" height="12" rx="5" fill="#CBD5E1"/>
+                    <rect x="148" y="132" width="110" height="4" rx="2" fill="#B0B9C7"/>
+                    {/* Floating + badge */}
+                    <circle cx="133" cy="27" r="15" fill="white" stroke="#0C6B38" strokeWidth="1.5"/>
+                    <path d="M133 21v12M127 27h12" stroke="#0C6B38" strokeWidth="2.5" strokeLinecap="round"/>
+                    {/* Shadow */}
+                    <ellipse cx="72" cy="175" rx="27" ry="4" fill="#0C6B38" opacity="0.1"/>
+                    {/* Pants / legs */}
+                    <rect x="60" y="127" width="12" height="44" rx="6" fill="#0C6B38"/>
+                    <rect x="76" y="127" width="12" height="44" rx="6" fill="#0C6B38"/>
+                    {/* Shoes */}
+                    <rect x="52" y="163" width="24" height="10" rx="5" fill="#1A1A1A"/>
+                    <rect x="69" y="163" width="24" height="10" rx="5" fill="#1A1A1A"/>
+                    {/* Torso */}
+                    <rect x="55" y="88" width="42" height="42" rx="10" fill="white"/>
+                    {/* Neck */}
+                    <rect x="70" y="77" width="10" height="14" rx="5" fill="#C68642"/>
+                    {/* Right arm — reaches to keyboard */}
+                    <path d="M95 100 Q115 112 132 126" stroke="#C68642" strokeWidth="13" strokeLinecap="round" fill="none"/>
+                    <circle cx="132" cy="126" r="8" fill="#C68642"/>
+                    {/* Left arm — raised up excited */}
+                    <path d="M57 95 Q44 80 37 62" stroke="#C68642" strokeWidth="13" strokeLinecap="round" fill="none"/>
+                    <circle cx="37" cy="61" r="8" fill="#C68642"/>
+                    {/* Head */}
+                    <circle cx="76" cy="65" r="21" fill="#C68642"/>
+                    {/* Hair afro */}
+                    <ellipse cx="76" cy="47" rx="24" ry="19" fill="#1A1A1A"/>
+                    <circle cx="54" cy="61" r="11" fill="#1A1A1A"/>
+                    <circle cx="98" cy="61" r="11" fill="#1A1A1A"/>
+                    {/* Earrings */}
+                    <circle cx="55" cy="74" r="3.5" fill="#0C6B38"/>
+                    <circle cx="97" cy="74" r="3.5" fill="#0C6B38"/>
+                    {/* Eyes */}
+                    <circle cx="70" cy="67" r="3.5" fill="#1A1A1A"/>
+                    <circle cx="82" cy="67" r="3.5" fill="#1A1A1A"/>
+                    <circle cx="71" cy="66" r="1.5" fill="white"/>
+                    <circle cx="83" cy="66" r="1.5" fill="white"/>
+                    {/* Big smile */}
+                    <path d="M69 76 Q76 83 83 76" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" fill="none"/>
                   </svg>
                 )
               },
               {
                 ...steps[1],
                 svg: (
+                  /* Character pointing at chosen worker profile — Pick a Worker */
                   <svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <rect width="280" height="180" fill="#E8F5EF"/>
-                    {[0,1,2].map(i => (
-                      <g key={i} transform={`translate(${30 + i * 82}, 30)`}>
-                        <rect width="74" height="120" rx="10" fill="white" stroke={i === 1 ? "#0C6B38" : "#E5E7EB"} strokeWidth={i === 1 ? 2 : 1}/>
-                        <circle cx="37" cy="30" r="16" fill={i === 1 ? "#0C6B38" : "#F3F4F6"}/>
-                        <circle cx="37" cy="24" r="7" fill={i === 1 ? "white" : "#D1D5DB"} opacity="0.7"/>
-                        <ellipse cx="37" cy="38" rx="12" ry="7" fill={i === 1 ? "white" : "#D1D5DB"} opacity="0.5"/>
-                        <rect x="10" y="55" width="54" height="5" rx="2.5" fill={i === 1 ? "#0C6B38" : "#E5E7EB"} opacity={i === 1 ? 0.5 : 1}/>
-                        <rect x="17" y="66" width="40" height="4" rx="2" fill="#E5E7EB"/>
-                        <rect x="17" y="76" width="40" height="4" rx="2" fill="#E5E7EB"/>
-                        {i === 1 && <rect x="10" y="92" width="54" height="18" rx="5" fill="#0C6B38"/>}
-                        {i === 1 && <path d="M30 101l4 4 8-8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
-                        {i !== 1 && <rect x="10" y="92" width="54" height="18" rx="5" fill="#F3F4F6"/>}
-                      </g>
-                    ))}
+                    {/* Card 1 — left, neutral */}
+                    <rect x="12" y="30" width="66" height="106" rx="10" fill="white" stroke="#E5E7EB" strokeWidth="1.5"/>
+                    <circle cx="45" cy="58" r="15" fill="#F3F4F6"/>
+                    <circle cx="45" cy="52" r="6" fill="#D1D5DB"/>
+                    <ellipse cx="45" cy="64" rx="10" ry="6" fill="#D1D5DB"/>
+                    <rect x="22" y="80" width="38" height="5" rx="2.5" fill="#E5E7EB"/>
+                    <rect x="28" y="91" width="26" height="4" rx="2" fill="#E5E7EB"/>
+                    <rect x="22" y="109" width="38" height="14" rx="5" fill="#F3F4F6"/>
+                    {/* Card 2 — middle, SELECTED */}
+                    <rect x="88" y="20" width="70" height="118" rx="10" fill="white" stroke="#0C6B38" strokeWidth="2.5"/>
+                    <circle cx="123" cy="52" r="18" fill="#0C6B38"/>
+                    <circle cx="123" cy="46" r="8" fill="white" opacity="0.7"/>
+                    <ellipse cx="123" cy="60" rx="12" ry="7" fill="white" opacity="0.5"/>
+                    <rect x="100" y="77" width="46" height="5" rx="2.5" fill="#0C6B38" opacity="0.4"/>
+                    <rect x="106" y="88" width="34" height="4" rx="2" fill="#D1D5DB"/>
+                    <rect x="98" y="104" width="50" height="16" rx="6" fill="#0C6B38"/>
+                    <path d="M113 112l5 5 9-9" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    {/* Card 3 — right, neutral */}
+                    <rect x="168" y="30" width="66" height="106" rx="10" fill="white" stroke="#E5E7EB" strokeWidth="1.5"/>
+                    <circle cx="201" cy="58" r="15" fill="#F3F4F6"/>
+                    <circle cx="201" cy="52" r="6" fill="#D1D5DB"/>
+                    <ellipse cx="201" cy="64" rx="10" ry="6" fill="#D1D5DB"/>
+                    <rect x="178" y="80" width="38" height="5" rx="2.5" fill="#E5E7EB"/>
+                    <rect x="184" y="91" width="26" height="4" rx="2" fill="#E5E7EB"/>
+                    <rect x="178" y="109" width="38" height="14" rx="5" fill="#F3F4F6"/>
+                    {/* CHARACTER — far right pointing at card 2 */}
+                    <ellipse cx="250" cy="175" rx="22" ry="4" fill="#0C6B38" opacity="0.1"/>
+                    {/* Legs */}
+                    <rect x="239" y="130" width="10" height="41" rx="5" fill="#0C6B38"/>
+                    <rect x="253" y="130" width="10" height="41" rx="5" fill="#0C6B38"/>
+                    {/* Shoes */}
+                    <rect x="232" y="163" width="21" height="9" rx="4" fill="#1A1A1A"/>
+                    <rect x="248" y="163" width="21" height="9" rx="4" fill="#1A1A1A"/>
+                    {/* Torso */}
+                    <rect x="234" y="93" width="38" height="40" rx="9" fill="white"/>
+                    {/* Neck */}
+                    <rect x="248" y="82" width="9" height="14" rx="4" fill="#C68642"/>
+                    {/* Left arm — pointing at card 2 */}
+                    <path d="M236 103 Q210 110 175 120" stroke="#C68642" strokeWidth="12" strokeLinecap="round" fill="none"/>
+                    <circle cx="174" cy="120" r="7" fill="#C68642"/>
+                    {/* Right arm — hand on hip */}
+                    <path d="M271 100 Q278 113 276 126" stroke="#C68642" strokeWidth="12" strokeLinecap="round" fill="none"/>
+                    <circle cx="276" cy="126" r="7" fill="#C68642"/>
+                    {/* Head */}
+                    <circle cx="253" cy="70" r="20" fill="#C68642"/>
+                    {/* Hair afro */}
+                    <ellipse cx="253" cy="53" rx="22" ry="18" fill="#1A1A1A"/>
+                    <circle cx="233" cy="66" r="10" fill="#1A1A1A"/>
+                    <circle cx="273" cy="66" r="10" fill="#1A1A1A"/>
+                    {/* Earring */}
+                    <circle cx="233" cy="77" r="3" fill="#0C6B38"/>
+                    {/* Eyes — looking left toward cards */}
+                    <circle cx="247" cy="72" r="3.5" fill="#1A1A1A"/>
+                    <circle cx="259" cy="72" r="3.5" fill="#1A1A1A"/>
+                    <circle cx="246" cy="71" r="1.5" fill="white"/>
+                    <circle cx="258" cy="71" r="1.5" fill="white"/>
+                    {/* Smile */}
+                    <path d="M246 80 Q253 87 260 80" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" fill="none"/>
                   </svg>
                 )
               },
               {
                 ...steps[2],
                 svg: (
+                  /* Character holding phone with lock/checkmark — Pay Securely */
                   <svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     <rect width="280" height="180" fill="#E8F5EF"/>
-                    <rect x="70" y="30" width="140" height="110" rx="16" fill="white" stroke="#0C6B38" strokeWidth="1.5"/>
-                    <rect x="70" y="30" width="140" height="38" rx="16" fill="#0C6B38"/>
-                    <rect x="70" y="50" width="140" height="18" fill="#0C6B38"/>
-                    <rect x="84" y="40" width="60" height="8" rx="4" fill="white" opacity="0.4"/>
-                    <rect x="84" y="40" width="30" height="8" rx="4" fill="white" opacity="0.6"/>
-                    <circle cx="140" cy="95" r="28" fill="#E8F5EF"/>
-                    <path d="M140 80v10M140 80c0 0-8 5-8 15s8 15 8 15 8-5 8-15-8-15-8-15z" stroke="#0C6B38" strokeWidth="0" fill="#0C6B38" opacity="0" />
-                    <path d="M126 82l14 0a14 14 0 0 1 0 28h-14a14 14 0 0 1 0-28z" fill="#0C6B38" opacity="0.12"/>
-                    <path d="M131 96c0-4.97 4.03-9 9-9s9 4.03 9 9-4.03 9-9 9" stroke="#0C6B38" strokeWidth="2" strokeLinecap="round" fill="none"/>
-                    <path d="M127 96h13" stroke="#0C6B38" strokeWidth="2" strokeLinecap="round"/>
-                    <rect x="127" y="82" width="26" height="28" rx="4" fill="#0C6B38" opacity="0.08"/>
-                    <path d="M140 78v6M137 80l3-3 3 3" stroke="#0C6B38" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <circle cx="140" cy="95" r="14" fill="none" stroke="#0C6B38" strokeWidth="2"/>
-                    <path d="M134 95l4 4 8-8" stroke="#0C6B38" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <rect x="84" y="128" width="112" height="5" rx="2.5" fill="#E5E7EB"/>
-                    <rect x="100" y="138" width="80" height="5" rx="2.5" fill="#E5E7EB"/>
+                    {/* Phone body */}
+                    <rect x="160" y="28" width="62" height="108" rx="14" fill="white" stroke="#0C6B38" strokeWidth="2"/>
+                    {/* Phone screen */}
+                    <rect x="166" y="38" width="50" height="88" rx="8" fill="#F0FDF4"/>
+                    {/* Shield on screen */}
+                    <path d="M191 55 C191 55 179 59 179 71 C179 80 185 86 191 89 C197 86 203 80 203 71 C203 59 191 55 191 55Z" fill="#0C6B38" opacity="0.18"/>
+                    <path d="M191 56 C191 56 180 60 180 71 C180 80 185.5 86 191 89 C196.5 86 202 80 202 71 C202 60 191 56 191 56Z" stroke="#0C6B38" strokeWidth="2" fill="none"/>
+                    <path d="M185 71 l4 5 8-9" stroke="#0C6B38" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    {/* Amount */}
+                    <rect x="174" y="98" width="34" height="6" rx="3" fill="#0C6B38" opacity="0.3"/>
+                    <rect x="178" y="110" width="26" height="5" rx="2.5" fill="#D1D5DB"/>
+                    {/* Paid badge */}
+                    <rect x="172" y="119" width="38" height="13" rx="5" fill="#0C6B38"/>
+                    <rect x="178" y="123" width="26" height="5" rx="2" fill="white" opacity="0.7"/>
+                    {/* Home bar */}
+                    <rect x="181" y="130" width="20" height="3" rx="1.5" fill="#CBD5E1"/>
+                    {/* Floating sparkle dots */}
+                    <circle cx="150" cy="32" r="5" fill="#0C6B38" opacity="0.35"/>
+                    <circle cx="234" cy="40" r="4" fill="#0C6B38" opacity="0.28"/>
+                    <circle cx="242" cy="58" r="3" fill="#0C6B38" opacity="0.22"/>
+                    <circle cx="145" cy="56" r="3.5" fill="#0C6B38" opacity="0.28"/>
+                    {/* Shadow */}
+                    <ellipse cx="100" cy="175" rx="28" ry="4" fill="#0C6B38" opacity="0.1"/>
+                    {/* Legs */}
+                    <rect x="88" y="128" width="12" height="43" rx="6" fill="#0C6B38"/>
+                    <rect x="104" y="128" width="12" height="43" rx="6" fill="#0C6B38"/>
+                    {/* Shoes */}
+                    <rect x="80" y="163" width="24" height="10" rx="5" fill="#1A1A1A"/>
+                    <rect x="97" y="163" width="24" height="10" rx="5" fill="#1A1A1A"/>
+                    {/* Torso */}
+                    <rect x="83" y="88" width="42" height="43" rx="10" fill="white"/>
+                    {/* Neck */}
+                    <rect x="99" y="77" width="10" height="14" rx="5" fill="#C68642"/>
+                    {/* Right arm — holding phone up */}
+                    <path d="M124 96 Q143 80 160 65" stroke="#C68642" strokeWidth="13" strokeLinecap="round" fill="none"/>
+                    <circle cx="160" cy="64" r="8" fill="#C68642"/>
+                    {/* Left arm — hand on hip */}
+                    <path d="M85 96 Q71 110 69 122" stroke="#C68642" strokeWidth="13" strokeLinecap="round" fill="none"/>
+                    <circle cx="69" cy="122" r="8" fill="#C68642"/>
+                    {/* Head */}
+                    <circle cx="104" cy="66" r="21" fill="#C68642"/>
+                    {/* Hair afro */}
+                    <ellipse cx="104" cy="48" rx="24" ry="19" fill="#1A1A1A"/>
+                    <circle cx="83" cy="62" r="11" fill="#1A1A1A"/>
+                    <circle cx="125" cy="62" r="11" fill="#1A1A1A"/>
+                    {/* Earrings */}
+                    <circle cx="83" cy="74" r="3.5" fill="#0C6B38"/>
+                    <circle cx="125" cy="74" r="3.5" fill="#0C6B38"/>
+                    {/* Eyes — looking at phone */}
+                    <circle cx="98" cy="68" r="3.5" fill="#1A1A1A"/>
+                    <circle cx="110" cy="68" r="3.5" fill="#1A1A1A"/>
+                    <circle cx="99" cy="67" r="1.5" fill="white"/>
+                    <circle cx="111" cy="67" r="1.5" fill="white"/>
+                    {/* Satisfied smile */}
+                    <path d="M97 77 Q104 84 111 77" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" fill="none"/>
                   </svg>
                 )
               },
