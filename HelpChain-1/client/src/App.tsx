@@ -1,14 +1,19 @@
 import { Switch, Route } from "wouter";
+import { useState, useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { MobileMenuProvider, useMobileMenu } from "@/contexts/mobile-menu-context";
 import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
-import { Chatbot } from "@/components/chatbot/chatbot";
+import { MobileMenuProvider } from "@/contexts/mobile-menu-context";
+import { SplashScreen } from "@/components/layout/SplashScreen";
+import { AnimatePresence } from "framer-motion";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { Chatbot } from "@/components/chatbot/chatbot";
+
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import IntroOnboardingPage from "@/pages/intro-onboarding";
 import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import CreateRequest from "@/pages/create-request";
@@ -40,7 +45,6 @@ import CareersPage from "@/pages/careers";
 import PressPage from "@/pages/press";
 import CookiesPage from "@/pages/cookies";
 
-/* Convenience wrapper for protected routes */
 function P({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
@@ -48,36 +52,33 @@ function P({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      {/* ── Public routes ── */}
-      <Route path="/"             component={Home} />
-      <Route path="/auth"         component={AuthPage} />
-      <Route path="/onboarding"   component={OnboardingPage} />
+      <Route path="/"              component={Home} />
+      <Route path="/intro"         component={IntroOnboardingPage} />
+      <Route path="/auth"          component={AuthPage} />
+      <Route path="/onboarding"    component={OnboardingPage} />
 
-      {/* ── Public content pages ── */}
-      <Route path="/discover"     component={DiscoverPage} />
-      <Route path="/search"       component={DiscoverPage} />
-      <Route path="/how-it-works" component={HowItWorks} />
-      <Route path="/safety"       component={SafetyPage} />
-      <Route path="/stories"      component={StoriesPage} />
-      <Route path="/volunteers"   component={VolunteersPage} />
-      <Route path="/blog"         component={BlogPage} />
-      <Route path="/events"       component={EventsPage} />
-      <Route path="/help"         component={HelpPage} />
-      <Route path="/contact"      component={ContactPage} />
-      <Route path="/terms"        component={TermsPage} />
-      <Route path="/privacy"      component={PrivacyPage} />
-      <Route path="/sitemap"      component={SitemapPage} />
-      <Route path="/about"        component={AboutPage} />
-      <Route path="/pricing"      component={PricingPage} />
-      <Route path="/careers"      component={CareersPage} />
-      <Route path="/press"        component={PressPage} />
-      <Route path="/cookies"      component={CookiesPage} />
+      <Route path="/discover"      component={DiscoverPage} />
+      <Route path="/search"        component={DiscoverPage} />
+      <Route path="/how-it-works"  component={HowItWorks} />
+      <Route path="/safety"        component={SafetyPage} />
+      <Route path="/stories"       component={StoriesPage} />
+      <Route path="/volunteers"    component={VolunteersPage} />
+      <Route path="/blog"          component={BlogPage} />
+      <Route path="/events"        component={EventsPage} />
+      <Route path="/help"          component={HelpPage} />
+      <Route path="/contact"       component={ContactPage} />
+      <Route path="/terms"         component={TermsPage} />
+      <Route path="/privacy"       component={PrivacyPage} />
+      <Route path="/sitemap"       component={SitemapPage} />
+      <Route path="/about"         component={AboutPage} />
+      <Route path="/pricing"       component={PricingPage} />
+      <Route path="/careers"       component={CareersPage} />
+      <Route path="/press"         component={PressPage} />
+      <Route path="/cookies"       component={CookiesPage} />
 
-      {/* Public: task details can be viewed without login */}
-      <Route path="/request/:id"           component={RequestDetails} />
+      <Route path="/request/:id"            component={RequestDetails} />
       <Route path="/public-profile/:userId" component={PublicProfilePage} />
 
-      {/* ── Protected routes — must be logged in + onboarding done/skipped ── */}
       <Route path="/dashboard">
         {() => <P><Dashboard /></P>}
       </Route>
@@ -111,15 +112,28 @@ function Router() {
   );
 }
 
-function MobileMenuOverlay() {
-  const { isMobileMenuOpen, setIsMobileMenuOpen } = useMobileMenu();
-  if (!isMobileMenuOpen) return null;
+function AppShell() {
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem("hc-splash-shown");
+  });
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem("hc-splash-shown", "true");
+    setShowSplash(false);
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-40 md:hidden"
-      style={{ backgroundColor: "rgba(0,0,0,0.12)", cursor: "pointer" }}
-      onClick={() => setIsMobileMenuOpen(false)}
-    />
+    <>
+      <AnimatePresence>
+        {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      </AnimatePresence>
+      {!showSplash && (
+        <>
+          <Router />
+          <Chatbot />
+        </>
+      )}
+    </>
   );
 }
 
@@ -130,9 +144,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Toaster />
-            <MobileMenuOverlay />
-            <Router />
-            <Chatbot />
+            <AppShell />
           </TooltipProvider>
         </QueryClientProvider>
       </MobileMenuProvider>

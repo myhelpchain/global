@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
+import { MobileHeader } from "@/components/layout/MobileHeader";
+import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -144,8 +144,9 @@ function CreateRequestContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
+    <MobileLayout>
+      <div className="min-h-screen flex flex-col" style={{ background: "#F8FAF8" }}>
+      <MobileHeader title="Post a Task" />
       <div className="flex-1 container mx-auto px-4 py-12 max-w-3xl">
         <motion.div className="mb-8 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Badge className="mb-4 px-4 py-1.5 bg-primary/10 text-primary border-primary/20 rounded-full">Create Task</Badge>
@@ -359,8 +360,8 @@ function CreateRequestContent() {
           </CardContent>
         </Card>
       </div>
-      <Footer />
-    </div>
+      </div>
+    </MobileLayout>
   );
 }
 

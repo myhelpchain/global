@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useRoute, useLocation, Link } from "wouter";
-import { Navbar } from "@/components/layout/navbar";
+import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -124,7 +124,7 @@ export default function RequestDetails() {
   if (taskLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Task Details" />
         <div className="flex items-center justify-center pt-32">
           <Loader2 className="w-8 h-8 animate-spin text-[#0C6B38]" />
         </div>
@@ -135,7 +135,7 @@ export default function RequestDetails() {
   if (!task) {
     return (
       <div className="min-h-screen bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Task Details" />
         <div className="max-w-lg mx-auto px-4 pt-24 text-center">
           <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 flex items-center justify-center mx-auto mb-5">
             <AlertCircle className="w-7 h-7 text-gray-300" />
@@ -231,8 +231,8 @@ export default function RequestDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAF8]">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAF8]" style={{ paddingBottom: "80px" }}>
+      <MobileHeader title="Task Details" />
 
       <div className="max-w-2xl mx-auto px-4 pb-10">
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
+import { MobileHeader } from "@/components/layout/MobileHeader";
+import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -208,8 +208,10 @@ function SettingsContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
+    <>
+    <MobileLayout>
+    <div className="min-h-screen flex flex-col" style={{ background: "#F8FAF8" }}>
+      <MobileHeader title="Settings" />
       <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
@@ -361,7 +363,8 @@ function SettingsContent() {
           </Card>
         </div>
       </main>
-      <Footer />
+    </div>
+    </MobileLayout>
 
       {/* Edit Profile Dialog */}
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
@@ -546,7 +549,7 @@ function SettingsContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/layout/navbar";
+import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   MapPin, Star, ShieldCheck, MessageSquare, Calendar,
@@ -54,7 +54,7 @@ export default function PublicProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Profile" />
         <div className="flex items-center justify-center pt-32">
           <Loader2 className="w-8 h-8 animate-spin text-[#0C6B38]" />
         </div>
@@ -65,7 +65,7 @@ export default function PublicProfilePage() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Profile" />
         <div className="max-w-lg mx-auto px-4 pt-20 text-center">
           <p className="text-gray-400 mb-4">Profile not found</p>
           <Link href="/discover">
@@ -87,8 +87,8 @@ export default function PublicProfilePage() {
   const isOwnProfile = user?.uid === targetUserId;
 
   return (
-    <div className="min-h-screen bg-[#F8FAF8]">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAF8]" style={{ paddingBottom: "80px" }}>
+      <MobileHeader title="Profile" />
 
       <div className="max-w-lg mx-auto px-4 pb-10">
 

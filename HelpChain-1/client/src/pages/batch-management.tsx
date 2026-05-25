@@ -1,5 +1,5 @@
 import { useRoute, Link } from "wouter";
-import { Navbar } from "@/components/layout/navbar";
+import { MobileHeader } from "@/components/layout/MobileHeader";
 import { useTask, useTaskOffers } from "@/hooks/use-tasks-api";
 import { useLocalizationStore } from "@/stores/localization-store";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
@@ -37,7 +37,7 @@ export default function BatchManagementPage() {
   if (taskLoading || offersLoading) {
     return (
       <div className="min-h-screen bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Task Management" />
         <div className="flex items-center justify-center pt-32">
           <Loader2 className="w-7 h-7 animate-spin text-[#0C6B38]" />
         </div>
@@ -48,7 +48,7 @@ export default function BatchManagementPage() {
   if (!task) {
     return (
       <div className="min-h-screen bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Task Management" />
         <div className="max-w-lg mx-auto px-4 pt-20 text-center">
           <AlertCircle className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 mb-4">Task not found</p>
@@ -93,8 +93,8 @@ export default function BatchManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAF8]">
-      <Navbar />
+    <div className="min-h-screen bg-[#F8FAF8]" style={{ paddingBottom: "80px" }}>
+      <MobileHeader title="Task Management" />
 
       <main className="max-w-3xl mx-auto px-4 pb-10">
         <div className="py-4">

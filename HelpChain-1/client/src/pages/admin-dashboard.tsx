@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navbar } from "@/components/layout/navbar";
+import { MobileHeader } from "@/components/layout/MobileHeader";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useTasksApi } from "@/hooks/use-tasks-api";
 import { useWallet } from "@/hooks/use-wallet";
@@ -51,7 +51,7 @@ export default function AdminDashboard() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col bg-[#F8FAF8]">
-        <Navbar />
+        <MobileHeader title="Admin" />
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mb-4" style={{ border: "1px solid #FEE2E2" }}>
             <ShieldAlert className="w-8 h-8 text-red-500" />
@@ -89,8 +89,8 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAF8]">
-      <Navbar />
+    <div className="min-h-screen flex flex-col bg-[#F8FAF8]" style={{ paddingBottom: "80px" }}>
+      <MobileHeader title="Admin Dashboard" />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full">
 
