@@ -53,6 +53,7 @@ function WalletContent() {
   const { formatLocal, currency } = useLocalizationStore();
   const { toast } = useToast();
 
+  const [paystackReady, setPaystackReady] = useState(() => !!(window as any).PaystackPop);
   const [hideBalance, setHideBalance] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -75,6 +76,19 @@ function WalletContent() {
   const filteredTx = filter === "all"
     ? transactions
     : transactions.filter((t) => t.type === filter);
+
+  useEffect(() => {
+    const pop = (window as any).PaystackPop;
+    if (pop && typeof pop.setup === "function") { setPaystackReady(true); return; }
+    // Remove any stale V2 script so V1 loads cleanly
+    document.querySelectorAll('script[src*="paystack"]').forEach(s => s.remove());
+    delete (window as any).PaystackPop;
+    const script = document.createElement("script");
+    script.src = "https://js.paystack.co/v1/inline.js";
+    script.onload = () => setPaystackReady(true);
+    script.onerror = () => console.error("[Paystack] Failed to load inline script");
+    document.head.appendChild(script);
+  }, []);
 
   useEffect(() => {
     if (withdrawOpen && banks.length === 0) loadBanks();
@@ -134,8 +148,8 @@ function WalletContent() {
     if (!amount || amount < 100) { toast({ title: "Minimum deposit is ₦100", variant: "destructive" }); return; }
 
     const PaystackPop = (window as any).PaystackPop;
-    if (!PaystackPop) {
-      toast({ title: "Payment service loading", description: "Please wait a moment and try again.", variant: "destructive" });
+    if (!PaystackPop || !paystackReady) {
+      toast({ title: "Payment still loading", description: "Give it a second then try again." });
       return;
     }
 
@@ -145,31 +159,34 @@ function WalletContent() {
     setDepositOpen(false);
     setDepositAmount("");
 
-    PaystackPop.newTransaction({
+    const handler = PaystackPop.setup({
       key: "pk_live_17a0eb470f2f5942f1c358591b5082c757611228",
       email,
       amount: Math.round(amount * 100),
       currency: "NGN",
       ref: reference,
-      onSuccess: async (transaction: { reference: string }) => {
+      label: "HelpChain Wallet Top-up",
+      callback: async (response: { reference: string; status: string }) => {
+        if (response.status !== "success" && response.status !== "completed") return;
         setVerifyingPayment(true);
         try {
-          const verified = await verifyDeposit(transaction.reference || reference);
+          const verified = await verifyDeposit(response.reference || reference);
           toast({
             title: "Deposit Successful! 🎉",
             description: `₦${(verified.amount || amount).toLocaleString()} added to your wallet.`,
           });
           refetchWallet();
         } catch (err: any) {
-          toast({ title: "Verification issue", description: err.message || "Could not verify payment. Contact support if deducted.", variant: "destructive" });
+          toast({ title: "Verification issue", description: err.message || "Payment received — contact support if balance not updated.", variant: "destructive" });
         } finally {
           setVerifyingPayment(false);
         }
       },
-      onCancel: () => {
-        toast({ title: "Payment cancelled", description: "No money was charged." });
+      onClose: () => {
+        toast({ title: "Payment window closed", description: "No money was charged." });
       },
     });
+    handler.openIframe();
   };
 
   const handleWithdraw = async () => {
@@ -423,11 +440,13 @@ function WalletContent() {
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleDeposit}
-              disabled={depositPending || !depositAmount}
-              className="w-full h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              disabled={!depositAmount || !paystackReady}
+              className="w-full h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: `linear-gradient(135deg, ${GREEN} 0%, #16A34A 100%)` }}
             >
-              {depositPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4" /> Continue to Payment</>}
+              {!paystackReady
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading payment...</>
+                : <><Download className="w-4 h-4" /> Continue to Payment</>}
             </motion.button>
           </div>
         </DialogContent>
