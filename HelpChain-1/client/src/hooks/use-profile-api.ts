@@ -25,6 +25,11 @@ export interface ProfileData {
   response_time: string | null;
   skills: string[] | null;
   is_featured: boolean;
+  phone: string | null;
+  id_verified: boolean;
+  total_tasks_done: number;
+  total_tasks_posted: number;
+  total_reviews: number;
   created_at: string;
   updated_at: string;
 }
@@ -54,7 +59,9 @@ export function useProfileApi() {
       return data.profile || null;
     },
     enabled: !!user,
+    // Realtime invalidates this automatically; 2-min fallback
     staleTime: 30000,
+    refetchInterval: 120000,
   });
 
   const updateProfile = useMutation({
@@ -67,6 +74,7 @@ export function useProfileApi() {
       baseCurrency?: string;
       avatarUrl?: string;
       email?: string;
+      phone?: string;
     }) => {
       const headers = await getAuthHeaders();
       if (!headers) throw new Error("Not authenticated");
@@ -77,9 +85,13 @@ export function useProfileApi() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update profile");
-      return data.profile;
+      return data.profile as ProfileData;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profile"] }),
+    onSuccess: (updated) => {
+      // Immediately update cache with the returned profile
+      queryClient.setQueryData(["profile", user?.uid], updated);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    },
   });
 
   return {
@@ -89,4 +101,24 @@ export function useProfileApi() {
     updateProfile: updateProfile.mutateAsync,
     updateProfilePending: updateProfile.isPending,
   };
+}
+
+export function usePublicProfile(targetUserId: string | undefined) {
+  const { user, getIdToken } = useFirebaseAuth();
+
+  return useQuery<ProfileData | null>({
+    queryKey: ["public-profile", targetUserId],
+    queryFn: async () => {
+      if (!targetUserId) return null;
+      const token = await getIdToken();
+      if (!token) return null;
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await fetch(`${TASK_API}/profile/${targetUserId}`, { headers });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.profile || null;
+    },
+    enabled: !!targetUserId && !!user,
+    staleTime: 60000,
+  });
 }

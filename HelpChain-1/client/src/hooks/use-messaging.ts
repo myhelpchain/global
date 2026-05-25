@@ -53,7 +53,8 @@ export function useConversations() {
     },
     enabled: !!user,
     staleTime: 10000,
-    refetchInterval: 15000,
+    // Keep a slow fallback poll in case realtime isn't connected
+    refetchInterval: 60000,
   });
 
   const startConversationMutation = useMutation({
@@ -106,7 +107,8 @@ export function useMessages(conversationId: string | null) {
     },
     enabled: !!conversationId && !!user,
     staleTime: 5000,
-    refetchInterval: 8000,
+    // Slow fallback poll — realtime handles instant delivery
+    refetchInterval: 30000,
   });
 
   const sendMessageMutation = useMutation({
@@ -124,6 +126,7 @@ export function useMessages(conversationId: string | null) {
       return data.message as MessageData;
     },
     onSuccess: (newMessage) => {
+      // Optimistically add message; realtime will confirm
       queryClient.setQueryData<MessageData[]>(["messages", conversationId], (prev = []) => {
         if (prev.some((m) => m.id === newMessage.id)) return prev;
         return [...prev, newMessage];

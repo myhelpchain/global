@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
 import { MobileMenuProvider } from "@/contexts/mobile-menu-context";
+import { RealtimeProvider } from "@/contexts/RealtimeContext";
 import { SplashScreen } from "@/components/layout/SplashScreen";
 import { AnimatePresence, motion } from "framer-motion";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -57,7 +58,7 @@ const pageVariants = {
 
 const pageTransition = {
   duration: 0.28,
-  ease: [0.4, 0, 0.2, 1],
+  ease: "easeInOut" as const,
 };
 
 function AnimatedPage({ children }: { children: React.ReactNode }) {
@@ -172,10 +173,12 @@ function App() {
     <FirebaseAuthProvider>
       <MobileMenuProvider>
         <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <Toaster />
-            <AppShell />
-          </TooltipProvider>
+          <RealtimeProvider>
+            <TooltipProvider>
+              <Toaster />
+              <AppShell />
+            </TooltipProvider>
+          </RealtimeProvider>
         </QueryClientProvider>
       </MobileMenuProvider>
     </FirebaseAuthProvider>

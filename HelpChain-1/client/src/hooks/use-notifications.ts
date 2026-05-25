@@ -42,7 +42,8 @@ export function useNotifications() {
     },
     enabled: !!user,
     staleTime: 10000,
-    refetchInterval: 30000,
+    // Slow fallback poll — realtime handles instant delivery
+    refetchInterval: 120000,
   });
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
