@@ -5,7 +5,7 @@ import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useNotifications } from "@/hooks/use-notifications";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowLeft, Sparkles } from "lucide-react";
 
 const GREEN = "#0C6B38";
 
@@ -58,7 +58,7 @@ export default function AuthPage() {
         }
         await signUp(email, password, displayName);
         setTimeout(() => sendWelcomeNotification(displayName), 2000);
-        toast({ title: "Account created! 🎉", description: "Welcome to HelpChain!" });
+        toast({ title: "Account created!", description: "Welcome to HelpChain!" });
         setLocation("/onboarding");
       } else {
         await resetPassword(email);
@@ -92,80 +92,121 @@ export default function AuthPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAF8" }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: GREEN }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F5F7F5" }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-[18px] flex items-center justify-center" style={{ background: "#F0FDF4" }}>
+            <Loader2 className="w-6 h-6 animate-spin" style={{ color: GREEN }} />
+          </div>
+          <p className="text-sm text-gray-400 font-medium">Loading...</p>
+        </div>
       </div>
     );
   }
 
   const modeTitle = mode === "login" ? "Welcome back" : mode === "signup" ? "Create account" : "Reset password";
-  const modeSub = mode === "login" ? "Sign in to your account" : mode === "signup" ? "Join HelpChain today" : "Enter your email below";
+  const modeSub = mode === "login" ? "Sign in to continue" : mode === "signup" ? "Join HelpChain today" : "We'll send you a reset link";
 
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ background: "#FAFAFA", fontFamily: "'Figtree', sans-serif" }}
+      style={{ background: "#F5F7F5", fontFamily: "'Figtree', sans-serif" }}
     >
+      {/* Hero banner */}
       <div
-        className="h-52 relative overflow-hidden flex-shrink-0"
-        style={{ background: `linear-gradient(145deg, ${GREEN} 0%, #0a5a30 55%, #084a27 100%)` }}
+        className="relative overflow-hidden flex-shrink-0"
+        style={{
+          height: 220,
+          background: "linear-gradient(150deg, #0C6B38 0%, #085c30 55%, #063f22 100%)",
+        }}
       >
-        <div
-          className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-10 pointer-events-none"
-          style={{ background: "white", transform: "translate(30%,-30%)" }}
-        />
-        <div
-          className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-5 pointer-events-none"
-          style={{ background: "white", transform: "translate(-30%,30%)" }}
-        />
-
-        <div className="flex items-center justify-between px-5 pt-14 pb-0">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => {
-              const introSeen = localStorage.getItem("hc-intro-seen");
-              setLocation(introSeen ? "/intro" : "/intro");
+        {/* Decorations */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div
+            className="absolute top-0 right-0 rounded-full opacity-10"
+            style={{ width: 260, height: 260, background: "white", transform: "translate(40%, -40%)", filter: "blur(1px)" }}
+          />
+          <div
+            className="absolute bottom-0 left-0 rounded-full opacity-5"
+            style={{ width: 180, height: 180, background: "white", transform: "translate(-40%, 40%)" }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)",
+              backgroundSize: "28px 28px",
             }}
-            className="w-9 h-9 rounded-xl flex items-center justify-center"
-            style={{ background: "rgba(255,255,255,0.15)" }}
-          >
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </motion.button>
-          <div className="flex items-center gap-2">
-            <img
-              src="/images/helpchain-logo.png"
-              alt="HelpChain"
-              className="w-7 h-7 object-contain"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <span className="text-white font-bold text-base">HelpChain</span>
-          </div>
-          <div className="w-9" />
+          />
         </div>
 
-        <div className="px-6 pt-5">
-          <motion.h1
-            key={mode}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-2xl font-bold text-white"
+        <div className="relative flex items-center justify-between px-5 pt-14 pb-0">
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => setLocation("/intro")}
+            className="w-10 h-10 rounded-[13px] flex items-center justify-center"
+            style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.15)" }}
           >
-            {modeTitle}
-          </motion.h1>
-          <p className="text-white/60 text-sm mt-1">{modeSub}</p>
+            <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2} />
+          </motion.button>
+
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-[10px] flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.14)" }}
+            >
+              <img
+                src="/images/helpchain-logo.png"
+                alt="HelpChain"
+                className="w-5 h-5 object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+            <span className="text-white font-bold text-[15px]">HelpChain</span>
+          </div>
+          <div className="w-10" />
+        </div>
+
+        <div className="relative px-6 pt-5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.24 }}
+            >
+              <h1
+                className="text-[1.7rem] font-bold text-white"
+                style={{ letterSpacing: "-0.025em" }}
+              >
+                {modeTitle}
+              </h1>
+              <p className="text-white/50 text-sm mt-1 font-medium">{modeSub}</p>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 
-      <div className="flex-1 px-5 -mt-5 pb-8">
-        <div className="bg-white rounded-3xl shadow-xl shadow-black/5 p-6" style={{ border: "1px solid rgba(0,0,0,0.04)" }}>
-
+      {/* Form card */}
+      <div className="flex-1 px-5 -mt-6 pb-8">
+        <div
+          className="rounded-[28px] p-6"
+          style={{
+            background: "white",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.04)",
+            border: "1px solid rgba(0,0,0,0.04)",
+          }}
+        >
           {mode !== "reset" && (
             <>
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleGoogleSignIn}
-                className="w-full h-12 rounded-2xl flex items-center justify-center gap-3 text-sm font-semibold transition-all mb-5"
-                style={{ background: "#F8F9FA", border: "1.5px solid #E5E7EB", color: "#374151" }}
+                className="w-full h-[52px] rounded-[16px] flex items-center justify-center gap-3 text-sm font-semibold mb-5"
+                style={{
+                  background: "#F9FAFB",
+                  border: "1.5px solid #E5E7EB",
+                  color: "#374151",
+                }}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -178,13 +219,13 @@ export default function AuthPage() {
 
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1 h-px bg-gray-100" />
-                <span className="text-xs text-gray-400 font-medium">or</span>
+                <span className="text-xs text-gray-400 font-semibold">or continue with email</span>
                 <div className="flex-1 h-px bg-gray-100" />
               </div>
             </>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             <AnimatePresence>
               {mode === "signup" && (
                 <motion.div
@@ -192,15 +233,16 @@ export default function AuthPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22 }}
                 >
                   <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       type="text"
                       placeholder="Full name"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="pl-10 h-12 rounded-xl border-gray-200 text-sm"
+                      className="pl-11 h-[52px] rounded-[14px] border-gray-200 bg-gray-50/50 text-sm font-medium focus:bg-white transition-colors"
                       required
                     />
                   </div>
@@ -209,35 +251,36 @@ export default function AuthPage() {
             </AnimatePresence>
 
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="email"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 h-12 rounded-xl border-gray-200 text-sm"
+                className="pl-11 h-[52px] rounded-[14px] border-gray-200 bg-gray-50/50 text-sm font-medium focus:bg-white transition-colors"
                 required
               />
             </div>
 
             {mode !== "reset" && (
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-11 h-12 rounded-xl border-gray-200 text-sm"
+                  className="pl-11 pr-12 h-[52px] rounded-[14px] border-gray-200 bg-gray-50/50 text-sm font-medium focus:bg-white transition-colors"
                   required
                 />
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                </motion.button>
               </div>
             )}
 
@@ -248,15 +291,16 @@ export default function AuthPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22 }}
                 >
                   <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Confirm password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10 h-12 rounded-xl border-gray-200 text-sm"
+                      className="pl-11 h-[52px] rounded-[14px] border-gray-200 bg-gray-50/50 text-sm font-medium focus:bg-white transition-colors"
                       required
                     />
                   </div>
@@ -265,11 +309,11 @@ export default function AuthPage() {
             </AnimatePresence>
 
             {mode === "login" && (
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-0.5">
                 <button
                   type="button"
                   onClick={() => setMode("reset")}
-                  className="text-xs font-medium"
+                  className="text-xs font-semibold"
                   style={{ color: GREEN }}
                 >
                   Forgot password?
@@ -281,11 +325,10 @@ export default function AuthPage() {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-13 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 mt-2"
+              className="w-full h-[54px] rounded-[16px] text-white text-sm font-bold flex items-center justify-center gap-2.5 disabled:opacity-50 mt-1"
               style={{
-                height: 52,
-                background: `linear-gradient(135deg, ${GREEN} 0%, #16A34A 100%)`,
-                boxShadow: `0 6px 20px rgba(12,107,56,0.32)`,
+                background: `linear-gradient(140deg, ${GREEN} 0%, #16A34A 100%)`,
+                boxShadow: `0 8px 24px rgba(12,107,56,0.32), 0 2px 8px rgba(12,107,56,0.2)`,
               }}
             >
               {isSubmitting ? (
@@ -304,7 +347,7 @@ export default function AuthPage() {
             {mode === "login" && (
               <p>
                 New to HelpChain?{" "}
-                <button onClick={() => setMode("signup")} className="font-semibold" style={{ color: GREEN }}>
+                <button onClick={() => setMode("signup")} className="font-bold" style={{ color: GREEN }}>
                   Create account
                 </button>
               </p>
@@ -312,14 +355,14 @@ export default function AuthPage() {
             {mode === "signup" && (
               <p>
                 Already have an account?{" "}
-                <button onClick={() => setMode("login")} className="font-semibold" style={{ color: GREEN }}>
+                <button onClick={() => setMode("login")} className="font-bold" style={{ color: GREEN }}>
                   Sign in
                 </button>
               </p>
             )}
             {mode === "reset" && (
               <p>
-                <button onClick={() => setMode("login")} className="font-semibold" style={{ color: GREEN }}>
+                <button onClick={() => setMode("login")} className="font-bold" style={{ color: GREEN }}>
                   Back to sign in
                 </button>
               </p>
@@ -327,10 +370,10 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6 leading-relaxed px-4">
-          By continuing, you agree to HelpChain's{" "}
-          <span style={{ color: GREEN }}>Terms of Service</span> and{" "}
-          <span style={{ color: GREEN }}>Privacy Policy</span>
+        <p className="text-center text-xs text-gray-400 mt-5 leading-relaxed">
+          By continuing, you agree to our{" "}
+          <span className="font-semibold" style={{ color: GREEN }}>Terms</span> and{" "}
+          <span className="font-semibold" style={{ color: GREEN }}>Privacy Policy</span>
         </p>
       </div>
     </div>

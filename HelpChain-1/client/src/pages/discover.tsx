@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin, Clock, Filter, Globe, Users, X, Loader2, ChevronRight } from "lucide-react";
+import {
+  Search, MapPin, Clock, Filter, Globe, Users, X, Loader2,
+  ChevronRight, SlidersHorizontal, Briefcase
+} from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTasksApi, type TaskData } from "@/hooks/use-tasks-api";
@@ -47,7 +50,7 @@ const FILTER_CATEGORIES = [
   "Education", "Delivery", "Marketing", "Photography",
 ];
 
-function TaskCard({ task, formatLocal }: { task: TaskData; formatLocal: (n: number) => string }) {
+function TaskCard({ task, formatLocal, index }: { task: TaskData; formatLocal: (n: number) => string; index: number }) {
   const catColor = CATEGORY_COLORS[task.category] || { bg: "#F9FAFB", text: "#6B7280" };
   const catLabel = CATEGORY_MAP[task.category] || task.category;
   const daysAgo = Math.floor((Date.now() - new Date(task.created_at).getTime()) / 86400000);
@@ -57,53 +60,67 @@ function TaskCard({ task, formatLocal }: { task: TaskData; formatLocal: (n: numb
     <Link href={`/request/${task.id}`}>
       <motion.div
         whileTap={{ scale: 0.98 }}
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl p-4 cursor-pointer"
-        style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}
+        transition={{ delay: index * 0.04, duration: 0.32 }}
+        className="rounded-[22px] p-4.5 cursor-pointer"
+        style={{
+          background: "white",
+          border: "1px solid rgba(0,0,0,0.05)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+          padding: "18px",
+        }}
       >
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
             <span
-              className="text-xs font-bold px-2.5 py-1 rounded-full mb-2 inline-block"
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full mb-2 inline-block"
               style={{ background: catColor.bg, color: catColor.text }}
             >
               {catLabel}
             </span>
-            <h3 className="text-sm font-bold text-[#0D0D0D] leading-snug line-clamp-2">{task.title}</h3>
+            <h3
+              className="text-[14px] font-bold text-[#0D0D0D] leading-snug line-clamp-2"
+              style={{ letterSpacing: "-0.015em" }}
+            >
+              {task.title}
+            </h3>
           </div>
-          <div
-            className="shrink-0 text-right"
-          >
-            <p className="text-base font-bold" style={{ color: GREEN }}>{formatLocal(task.budget)}</p>
-            <p className="text-xs text-gray-400">budget</p>
+          <div className="shrink-0 text-right">
+            <p className="text-[15px] font-bold" style={{ color: GREEN }}>{formatLocal(task.budget)}</p>
+            <p className="text-[10px] text-gray-400 font-medium">budget</p>
           </div>
         </div>
 
         {task.description && (
-          <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">{task.description}</p>
+          <p className="text-[12px] text-gray-500 line-clamp-2 mb-3.5 leading-relaxed">{task.description}</p>
         )}
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               {task.is_remote ? (
-                <Globe className="w-3.5 h-3.5 text-gray-400" />
+                <Globe className="w-3 h-3 text-gray-400" strokeWidth={1.8} />
               ) : (
-                <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                <MapPin className="w-3 h-3 text-gray-400" strokeWidth={1.8} />
               )}
-              <span className="text-xs text-gray-400">{task.is_remote ? "Remote" : "On-site"}</span>
+              <span className="text-[11px] text-gray-400 font-medium">{task.is_remote ? "Remote" : "On-site"}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-xs text-gray-400">{task.offers_count || 0} offers</span>
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3 h-3 text-gray-400" strokeWidth={1.8} />
+              <span className="text-[11px] text-gray-400 font-medium">{task.offers_count || 0} offers</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-gray-400" />
-              <span className="text-xs text-gray-400">{timeLabel}</span>
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3 text-gray-400" strokeWidth={1.8} />
+              <span className="text-[11px] text-gray-400 font-medium">{timeLabel}</span>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-300" />
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: "#F5F7F5" }}
+          >
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+          </div>
         </div>
       </motion.div>
     </Link>
@@ -145,77 +162,92 @@ export default function DiscoverPage() {
 
   return (
     <MobileLayout>
-      <div style={{ background: "#F8FAF8" }}>
-
-        {/* Header */}
+      <div style={{ background: "#F5F7F5" }}>
+        {/* Sticky Header */}
         <div
           className="sticky top-0 z-40 px-4 pt-14 pb-3"
           style={{
-            background: "rgba(255,255,255,0.97)",
-            backdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(0,0,0,0.05)",
+            background: "rgba(245,247,245,0.97)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            borderBottom: "1px solid rgba(0,0,0,0.04)",
           }}
         >
-          <div className="flex items-center gap-2 mb-3">
-            <h1 className="text-xl font-bold text-[#0D0D0D] flex-1">Find Tasks</h1>
+          <div className="flex items-center gap-2.5 mb-3">
+            <h1
+              className="text-[1.3rem] font-bold text-[#0D0D0D] flex-1"
+              style={{ letterSpacing: "-0.02em" }}
+            >
+              Find Tasks
+            </h1>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl"
+              className="flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-[12px]"
               style={{
-                background: showFilters ? GREEN : "#F8FAF8",
+                background: showFilters ? GREEN : "white",
                 color: showFilters ? "white" : "#6B7280",
-                border: `1px solid ${showFilters ? GREEN : "#E5E7EB"}`,
+                border: `1.5px solid ${showFilters ? GREEN : "rgba(0,0,0,0.08)"}`,
+                boxShadow: showFilters ? `0 4px 12px rgba(12,107,56,0.2)` : "0 1px 3px rgba(0,0,0,0.04)",
               }}
             >
-              <Filter className="w-3.5 h-3.5" />
+              <SlidersHorizontal className="w-3.5 h-3.5" />
               Filter
             </motion.button>
           </div>
 
+          {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search tasks, categories..."
-              className="pl-10 h-11 rounded-xl border-gray-200 bg-gray-50 text-sm"
+              placeholder="Search tasks, skills, categories..."
+              className="pl-11 h-[46px] rounded-[14px] border-gray-200 bg-white text-sm font-medium"
+              style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
             />
-            {searchInput && (
-              <button
-                onClick={() => setSearchInput("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <AnimatePresence>
+              {searchInput && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={() => setSearchInput("")}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ background: "#E5E7EB" }}
+                >
+                  <X className="w-3.5 h-3.5 text-gray-500" />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
 
+          {/* Sort filters */}
           <AnimatePresence>
             {showFilters && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22 }}
                 className="mt-3 overflow-hidden"
               >
-                <p className="text-xs font-semibold text-gray-400 mb-2">Sort by</p>
                 <div className="flex gap-2 flex-wrap">
                   {[
-                    { id: "newest",      label: "Newest"       },
-                    { id: "budget_high", label: "High Budget"  },
-                    { id: "budget_low",  label: "Low Budget"   },
-                    { id: "most_offers", label: "Most Offers"  },
+                    { id: "newest",      label: "Newest"      },
+                    { id: "budget_high", label: "High Budget" },
+                    { id: "budget_low",  label: "Low Budget"  },
+                    { id: "most_offers", label: "Most Offers" },
                   ].map((opt) => (
                     <motion.button
                       key={opt.id}
-                      whileTap={{ scale: 0.95 }}
+                      whileTap={{ scale: 0.94 }}
                       onClick={() => setSortBy(opt.id as any)}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                      className="text-[11px] font-bold px-3.5 py-2 rounded-full"
                       style={{
-                        background: sortBy === opt.id ? GREEN : "#F8FAF8",
+                        background: sortBy === opt.id ? GREEN : "white",
                         color: sortBy === opt.id ? "white" : "#6B7280",
-                        border: `1px solid ${sortBy === opt.id ? GREEN : "#E5E7EB"}`,
+                        border: `1.5px solid ${sortBy === opt.id ? GREEN : "rgba(0,0,0,0.08)"}`,
                       }}
                     >
                       {opt.label}
@@ -227,24 +259,28 @@ export default function DiscoverPage() {
           </AnimatePresence>
         </div>
 
-        {/* Category Chips */}
+        {/* Category chips */}
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 px-4 py-3 w-max">
-            {FILTER_CATEGORIES.map((cat) => (
-              <motion.button
-                key={cat}
-                whileTap={{ scale: 0.93 }}
-                onClick={() => setActiveFilter(cat)}
-                className="text-xs font-semibold px-4 py-2 rounded-full whitespace-nowrap transition-all"
-                style={{
-                  background: activeFilter === cat ? GREEN : "white",
-                  color: activeFilter === cat ? "white" : "#6B7280",
-                  border: `1.5px solid ${activeFilter === cat ? GREEN : "#E5E7EB"}`,
-                }}
-              >
-                {cat}
-              </motion.button>
-            ))}
+            {FILTER_CATEGORIES.map((cat) => {
+              const active = activeFilter === cat;
+              return (
+                <motion.button
+                  key={cat}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={() => setActiveFilter(cat)}
+                  className="text-[11px] font-bold px-4 py-2 rounded-full whitespace-nowrap"
+                  style={{
+                    background: active ? GREEN : "white",
+                    color: active ? "white" : "#6B7280",
+                    border: `1.5px solid ${active ? GREEN : "rgba(0,0,0,0.07)"}`,
+                    boxShadow: active ? `0 4px 12px rgba(12,107,56,0.2)` : "0 1px 3px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  {cat}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
 
@@ -252,36 +288,55 @@ export default function DiscoverPage() {
         <div className="px-4 pb-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-gray-400 font-medium">
-              {openTasksLoading ? "Loading..." : `${filtered.length} task${filtered.length !== 1 ? "s" : ""} found`}
+              {openTasksLoading ? "Loading..." : `${filtered.length} task${filtered.length !== 1 ? "s" : ""} available`}
             </p>
             {user && (
               <Link href="/create-request">
-                <span className="text-xs font-bold" style={{ color: GREEN }}>+ Post Task</span>
+                <motion.span
+                  whileTap={{ scale: 0.94 }}
+                  className="text-xs font-bold flex items-center gap-1"
+                  style={{ color: GREEN }}
+                >
+                  <span className="text-sm">+</span> Post Task
+                </motion.span>
               </Link>
             )}
           </div>
 
           {openTasksLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-7 h-7 animate-spin" style={{ color: GREEN }} />
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-[22px] p-5 bg-white" style={{ border: "1px solid rgba(0,0,0,0.05)" }}>
+                  <div className="space-y-3">
+                    <div className="h-3 rounded-full shimmer w-1/4" />
+                    <div className="h-4 rounded-full shimmer w-3/4" />
+                    <div className="h-3 rounded-full shimmer w-full" />
+                    <div className="h-3 rounded-full shimmer w-2/3" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-16">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16"
+            >
               <div
-                className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center"
+                className="w-16 h-16 rounded-[22px] mx-auto mb-4 flex items-center justify-center"
                 style={{ background: "#F0FDF4" }}
               >
-                <Search className="w-8 h-8" style={{ color: GREEN, opacity: 0.5 }} />
+                <Briefcase className="w-7 h-7" style={{ color: GREEN, opacity: 0.5 }} />
               </div>
-              <p className="text-base font-semibold text-[#0D0D0D] mb-1">No tasks found</p>
-              <p className="text-sm text-gray-400">
+              <p className="text-[15px] font-bold text-[#0D0D0D] mb-1">No tasks found</p>
+              <p className="text-sm text-gray-400 leading-relaxed">
                 {searchInput ? `No results for "${searchInput}"` : "No open tasks in this category yet"}
               </p>
-            </div>
+            </motion.div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((task) => (
-                <TaskCard key={task.id} task={task} formatLocal={formatLocal} />
+              {filtered.map((task, i) => (
+                <TaskCard key={task.id} task={task} formatLocal={formatLocal} index={i} />
               ))}
             </div>
           )}

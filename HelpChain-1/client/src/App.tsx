@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
 import { MobileMenuProvider } from "@/contexts/mobile-menu-context";
 import { SplashScreen } from "@/components/layout/SplashScreen";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Chatbot } from "@/components/chatbot/chatbot";
 
@@ -49,66 +49,96 @@ function P({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
 
-function Router() {
+const pageVariants = {
+  initial: { opacity: 0, y: 12, scale: 0.99 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -8, scale: 1.005 },
+};
+
+const pageTransition = {
+  duration: 0.28,
+  ease: [0.4, 0, 0.2, 1],
+};
+
+function AnimatedPage({ children }: { children: React.ReactNode }) {
   return (
-    <Switch>
-      <Route path="/"              component={Home} />
-      <Route path="/intro"         component={IntroOnboardingPage} />
-      <Route path="/auth"          component={AuthPage} />
-      <Route path="/onboarding"    component={OnboardingPage} />
+    <motion.div
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      variants={pageVariants}
+      transition={pageTransition}
+      style={{ minHeight: "100%" }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
-      <Route path="/discover"      component={DiscoverPage} />
-      <Route path="/search"        component={DiscoverPage} />
-      <Route path="/how-it-works"  component={HowItWorks} />
-      <Route path="/safety"        component={SafetyPage} />
-      <Route path="/stories"       component={StoriesPage} />
-      <Route path="/volunteers"    component={VolunteersPage} />
-      <Route path="/blog"          component={BlogPage} />
-      <Route path="/events"        component={EventsPage} />
-      <Route path="/help"          component={HelpPage} />
-      <Route path="/contact"       component={ContactPage} />
-      <Route path="/terms"         component={TermsPage} />
-      <Route path="/privacy"       component={PrivacyPage} />
-      <Route path="/sitemap"       component={SitemapPage} />
-      <Route path="/about"         component={AboutPage} />
-      <Route path="/pricing"       component={PricingPage} />
-      <Route path="/careers"       component={CareersPage} />
-      <Route path="/press"         component={PressPage} />
-      <Route path="/cookies"       component={CookiesPage} />
+function Router() {
+  const [location] = useLocation();
 
-      <Route path="/request/:id"            component={RequestDetails} />
-      <Route path="/public-profile/:userId" component={PublicProfilePage} />
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <Switch key={location} location={location}>
+        <Route path="/"              component={Home} />
+        <Route path="/intro"         component={IntroOnboardingPage} />
+        <Route path="/auth"          component={AuthPage} />
+        <Route path="/onboarding"    component={OnboardingPage} />
 
-      <Route path="/dashboard">
-        {() => <P><Dashboard /></P>}
-      </Route>
-      <Route path="/create-request">
-        {() => <P><CreateRequest /></P>}
-      </Route>
-      <Route path="/create-offer">
-        {() => <P><CreateOfferPage /></P>}
-      </Route>
-      <Route path="/admin">
-        {() => <P><AdminDashboard /></P>}
-      </Route>
-      <Route path="/messages">
-        {() => <P><MessagesPage /></P>}
-      </Route>
-      <Route path="/wallet">
-        {() => <P><WalletPage /></P>}
-      </Route>
-      <Route path="/settings">
-        {() => <P><SettingsPage /></P>}
-      </Route>
-      <Route path="/profile">
-        {() => <P><ProfilePage /></P>}
-      </Route>
-      <Route path="/batch/:id">
-        {() => <P><BatchManagementPage /></P>}
-      </Route>
+        <Route path="/discover"      component={DiscoverPage} />
+        <Route path="/search"        component={DiscoverPage} />
+        <Route path="/how-it-works"  component={HowItWorks} />
+        <Route path="/safety"        component={SafetyPage} />
+        <Route path="/stories"       component={StoriesPage} />
+        <Route path="/volunteers"    component={VolunteersPage} />
+        <Route path="/blog"          component={BlogPage} />
+        <Route path="/events"        component={EventsPage} />
+        <Route path="/help"          component={HelpPage} />
+        <Route path="/contact"       component={ContactPage} />
+        <Route path="/terms"         component={TermsPage} />
+        <Route path="/privacy"       component={PrivacyPage} />
+        <Route path="/sitemap"       component={SitemapPage} />
+        <Route path="/about"         component={AboutPage} />
+        <Route path="/pricing"       component={PricingPage} />
+        <Route path="/careers"       component={CareersPage} />
+        <Route path="/press"         component={PressPage} />
+        <Route path="/cookies"       component={CookiesPage} />
 
-      <Route component={NotFound} />
-    </Switch>
+        <Route path="/request/:id"            component={RequestDetails} />
+        <Route path="/public-profile/:userId" component={PublicProfilePage} />
+
+        <Route path="/dashboard">
+          {() => <P><AnimatedPage><Dashboard /></AnimatedPage></P>}
+        </Route>
+        <Route path="/create-request">
+          {() => <P><AnimatedPage><CreateRequest /></AnimatedPage></P>}
+        </Route>
+        <Route path="/create-offer">
+          {() => <P><AnimatedPage><CreateOfferPage /></AnimatedPage></P>}
+        </Route>
+        <Route path="/admin">
+          {() => <P><AnimatedPage><AdminDashboard /></AnimatedPage></P>}
+        </Route>
+        <Route path="/messages">
+          {() => <P><AnimatedPage><MessagesPage /></AnimatedPage></P>}
+        </Route>
+        <Route path="/wallet">
+          {() => <P><AnimatedPage><WalletPage /></AnimatedPage></P>}
+        </Route>
+        <Route path="/settings">
+          {() => <P><AnimatedPage><SettingsPage /></AnimatedPage></P>}
+        </Route>
+        <Route path="/profile">
+          {() => <P><AnimatedPage><ProfilePage /></AnimatedPage></P>}
+        </Route>
+        <Route path="/batch/:id">
+          {() => <P><AnimatedPage><BatchManagementPage /></AnimatedPage></P>}
+        </Route>
+
+        <Route component={NotFound} />
+      </Switch>
+    </AnimatePresence>
   );
 }
 
