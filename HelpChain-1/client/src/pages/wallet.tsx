@@ -129,46 +129,47 @@ function WalletContent() {
     finally { setVerifyingAccount(false); }
   };
 
-  const handleDeposit = async () => {
+  const handleDeposit = () => {
     const amount = parseFloat(depositAmount);
     if (!amount || amount < 100) { toast({ title: "Minimum deposit is ₦100", variant: "destructive" }); return; }
-    try {
-      const result = await initializeDeposit(amount);
-      setDepositOpen(false);
-      setDepositAmount("");
 
-      const PaystackPop = (window as any).PaystackPop;
-      if (PaystackPop && result.access_code) {
-        PaystackPop.newTransaction({
-          key: "pk_live_17a0eb470f2f5942f1c358591b5082c757611228",
-          accessCode: result.access_code,
-          onSuccess: async (transaction: { reference: string }) => {
-            setVerifyingPayment(true);
-            try {
-              const verified = await verifyDeposit(transaction.reference || result.reference);
-              toast({
-                title: "Deposit Successful! 🎉",
-                description: `₦${(verified.amount || amount).toLocaleString()} added to your wallet.`,
-              });
-              refetchWallet();
-            } catch (err: any) {
-              toast({ title: "Verification issue", description: err.message, variant: "destructive" });
-            } finally {
-              setVerifyingPayment(false);
-            }
-          },
-          onCancel: () => {
-            toast({ title: "Payment cancelled", description: "No money was charged.", variant: "destructive" });
-          },
-        });
-      } else if (result.authorization_url) {
-        window.location.href = result.authorization_url;
-      } else {
-        throw new Error("No payment URL received");
-      }
-    } catch (err: any) {
-      toast({ title: "Deposit failed", description: err.message, variant: "destructive" });
+    const PaystackPop = (window as any).PaystackPop;
+    if (!PaystackPop) {
+      toast({ title: "Payment service loading", description: "Please wait a moment and try again.", variant: "destructive" });
+      return;
     }
+
+    const email = user?.email || `${(user?.uid || "user").slice(0, 8)}@helpchain.app`;
+    const reference = `hc_${Date.now()}_${(user?.uid || "x").slice(0, 6)}`;
+
+    setDepositOpen(false);
+    setDepositAmount("");
+
+    PaystackPop.newTransaction({
+      key: "pk_live_17a0eb470f2f5942f1c358591b5082c757611228",
+      email,
+      amount: Math.round(amount * 100),
+      currency: "NGN",
+      ref: reference,
+      onSuccess: async (transaction: { reference: string }) => {
+        setVerifyingPayment(true);
+        try {
+          const verified = await verifyDeposit(transaction.reference || reference);
+          toast({
+            title: "Deposit Successful! 🎉",
+            description: `₦${(verified.amount || amount).toLocaleString()} added to your wallet.`,
+          });
+          refetchWallet();
+        } catch (err: any) {
+          toast({ title: "Verification issue", description: err.message || "Could not verify payment. Contact support if deducted.", variant: "destructive" });
+        } finally {
+          setVerifyingPayment(false);
+        }
+      },
+      onCancel: () => {
+        toast({ title: "Payment cancelled", description: "No money was charged." });
+      },
+    });
   };
 
   const handleWithdraw = async () => {
