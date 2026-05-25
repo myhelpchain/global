@@ -134,8 +134,38 @@ function WalletContent() {
     if (!amount || amount < 100) { toast({ title: "Minimum deposit is ₦100", variant: "destructive" }); return; }
     try {
       const result = await initializeDeposit(amount);
-      if (result.authorization_url) window.location.href = result.authorization_url;
-      else throw new Error("No payment URL received");
+      setDepositOpen(false);
+      setDepositAmount("");
+
+      const PaystackPop = (window as any).PaystackPop;
+      if (PaystackPop && result.access_code) {
+        PaystackPop.newTransaction({
+          key: "pk_live_17a0eb470f2f5942f1c358591b5082c757611228",
+          accessCode: result.access_code,
+          onSuccess: async (transaction: { reference: string }) => {
+            setVerifyingPayment(true);
+            try {
+              const verified = await verifyDeposit(transaction.reference || result.reference);
+              toast({
+                title: "Deposit Successful! 🎉",
+                description: `₦${(verified.amount || amount).toLocaleString()} added to your wallet.`,
+              });
+              refetchWallet();
+            } catch (err: any) {
+              toast({ title: "Verification issue", description: err.message, variant: "destructive" });
+            } finally {
+              setVerifyingPayment(false);
+            }
+          },
+          onCancel: () => {
+            toast({ title: "Payment cancelled", description: "No money was charged.", variant: "destructive" });
+          },
+        });
+      } else if (result.authorization_url) {
+        window.location.href = result.authorization_url;
+      } else {
+        throw new Error("No payment URL received");
+      }
     } catch (err: any) {
       toast({ title: "Deposit failed", description: err.message, variant: "destructive" });
     }

@@ -153,14 +153,21 @@
 @layer base {
   * {
     @apply border-border;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   html {
     scroll-behavior: smooth;
     background-color: hsl(0 0% 100%);
+    overflow-x: hidden;
   }
   body {
     @apply font-sans antialiased text-foreground bg-background;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Figtree', system-ui, -apple-system, sans-serif;

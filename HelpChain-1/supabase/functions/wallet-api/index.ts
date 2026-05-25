@@ -152,9 +152,9 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ message: 'Minimum deposit is ₦100' }, 400);
       }
 
-      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) {
-        console.error('[wallet-api] PAYSTACK_SECRET_KEY not set');
+        console.error('[wallet-api] PAYSTACK_API_KEY not set');
         throw new Error('Payment service not configured');
       }
 
@@ -214,7 +214,7 @@ Deno.serve(async (req: Request) => {
       const { reference } = await req.json();
       console.log(`[wallet-api] Verify deposit: ref=${reference}`);
 
-      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) throw new Error('Payment service not configured');
 
       const verifyRes = await fetch(
@@ -307,7 +307,7 @@ Deno.serve(async (req: Request) => {
       const newBalance = balance - amount;
 
       if (!walletAddress && bankCode && accountNumber) {
-        const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+        const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
         if (!paystackKey) throw new Error('Payment service not configured');
 
         const recipientRes = await fetch('https://api.paystack.co/transferrecipient', {
@@ -401,7 +401,7 @@ Deno.serve(async (req: Request) => {
 
     // ─── GET /banks (Paystack bank list) ────────────────────
     if (req.method === 'GET' && route === '/banks') {
-      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) throw new Error('Payment service not configured');
 
       const res = await fetch('https://api.paystack.co/bank?country=nigeria', {
@@ -414,7 +414,7 @@ Deno.serve(async (req: Request) => {
     // ─── POST /verify-account (Paystack account verification) ─
     if (req.method === 'POST' && route === '/verify-account') {
       const { accountNumber, bankCode } = await req.json();
-      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) throw new Error('Payment service not configured');
 
       const res = await fetch(

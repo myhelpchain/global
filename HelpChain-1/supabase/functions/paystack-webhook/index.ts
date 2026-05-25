@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
-  const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+  const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
   if (!paystackKey) {
     return new Response('Not configured', { status: 500, headers: corsHeaders });
   }
