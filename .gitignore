@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local tool state
+.local/
+**/.local/
+.codex/
+.idea/
+*.iml
+
+# Build outputs and caches
+dist/
+**/dist/
+.cache/
+coverage/
+
+# Generated previews and heavy local assets
+*.zip
+*.mp4
+*.mov
+*.webm
+preview*.png
+**/preview*.png
+
+# OS/editor files
+.DS_Store
+Thumbs.db
