@@ -2,364 +2,278 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MobileHeader } from "@/components/layout/MobileHeader";
 import { MobileLayout } from "@/components/layout/MobileLayout";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useTasksApi } from "@/hooks/use-tasks-api";
 import { useWallet } from "@/hooks/use-wallet";
 import { useLocalizationStore } from "@/stores/localization-store";
-import { Loader2, ArrowLeft, ArrowRight, MapPin, Navigation, Check, Users, Globe, Upload } from "lucide-react";
+import {
+  Loader2, ArrowLeft, ArrowRight, MapPin, Check,
+  Users, Globe, Upload, Briefcase, Zap, ShieldCheck
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const CATEGORIES = [
-  { value: "digital_work", label: "Digital Work" },
-  { value: "design", label: "Design" },
-  { value: "writing", label: "Writing" },
-  { value: "programming", label: "Programming" },
-  { value: "marketing", label: "Marketing" },
-  { value: "research", label: "Research" },
-  { value: "education", label: "Education" },
-  { value: "translation", label: "Translation" },
-  { value: "consulting", label: "Consulting" },
-  { value: "home_services", label: "Home Services" },
-  { value: "errands", label: "Errands" },
-  { value: "physical_help", label: "Physical Help" },
-  { value: "transportation", label: "Transportation" },
-  { value: "other", label: "Other" },
-];
-
-const DURATION_OPTIONS = [
-  { value: "same_day", label: "Same-day completion" },
-  { value: "1_3_days", label: "1-3 days" },
-  { value: "4_7_days", label: "4-7 days" },
-  { value: "1_2_weeks", label: "1-2 weeks" },
-  { value: "flexible", label: "Flexible deadline" },
-  { value: "milestone", label: "Milestone-based" },
+  { value: "digital_work", label: "Digital", icon: Globe },
+  { value: "design", label: "Design", icon: Zap },
+  { value: "programming", label: "Code", icon: Briefcase },
+  { value: "home_repairs", label: "Repairs", icon: MapPin },
+  { value: "errands", label: "Errands", icon: Zap },
+  { value: "physical_help", label: "Manual", icon: Users },
 ];
 
 const formSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters").max(100),
-  description: z.string().min(20, "Please provide more detail (min 20 chars)"),
-  category: z.string().min(1, "Please select a category"),
+  title: z.string().min(5, "Too short").max(100),
+  description: z.string().min(20, "Provide more detail"),
+  category: z.string().min(1, "Select category"),
   locationType: z.enum(["remote", "local"]),
   location: z.string().optional(),
-  duration: z.string().min(1, "Select expected duration"),
-  deadline: z.string().optional(),
-  skills: z.string().optional(),
-  amount: z.coerce.number().min(0, "Amount cannot be negative"),
-  workerCount: z.coerce.number().min(1).max(100).default(1),
+  budget: z.coerce.number().min(500, "Min ₦500"),
+  workerCount: z.coerce.number().min(1).max(50).default(1),
 });
 
 function CreateRequestContent() {
   const [step, setStep] = useState(1);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { user } = useFirebaseAuth();
   const { createTask, createTaskPending } = useTasksApi();
   const { availableBalance } = useWallet();
-  const { formatLocal, currency } = useLocalizationStore();
+  const { formatLocal } = useLocalizationStore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "", description: "", category: "", locationType: "remote",
-      location: "", duration: "", deadline: "", skills: "",
-      amount: 0, workerCount: 1,
+      location: "", budget: 1000, workerCount: 1,
     },
   });
 
-  const watchAmount = form.watch("amount");
+  const watchAmount = form.watch("budget");
   const watchWorkerCount = form.watch("workerCount");
-  const watchLocationType = form.watch("locationType");
   const totalBudget = watchAmount * watchWorkerCount;
-  const platformFee = totalBudget > 0 ? Math.round(totalBudget * 0.06) : 0;
-  const totalCost = totalBudget + platformFee;
+  const fee = Math.round(totalBudget * 0.06);
+  const totalCost = totalBudget + fee;
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) { setLocation("/auth?mode=login"); return; }
-    const total = values.amount * values.workerCount;
-    const fee = Math.round(total * 0.06);
-    const grandTotal = total + fee;
-
-    if (total > 0 && availableBalance < grandTotal) {
-      toast({ title: "Insufficient Balance", description: `You need ${formatLocal(grandTotal)} but only have ${formatLocal(availableBalance)}.`, variant: "destructive" });
+    if (availableBalance < totalCost) {
+      toast({ title: "Insufficient Funds", description: `You need ${formatLocal(totalCost)}`, variant: "destructive" });
       return;
     }
-
     try {
-      await createTask({
-        title: values.title,
-        description: values.description,
-        category: values.category,
-        location: values.locationType === "local" ? values.location : undefined,
-        urgency: values.duration === "same_day" ? "urgent" : "flexible",
-        budget: values.amount,
-        workerCount: values.workerCount,
-      });
-
-      toast({ title: "Task Posted! 🎉", description: "Your task is now live on the marketplace." });
-      setLocation("/discover");
+      await createTask(values);
+      toast({ title: "Task Published!" });
+      setLocation("/dashboard");
     } catch (err: any) {
-      toast({ title: "Failed to post task", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
-  const totalSteps = 4;
-  const nextStep = async () => {
-    let valid = false;
-    if (step === 1) valid = await form.trigger(["title", "description", "category"]);
-    if (step === 2) valid = await form.trigger(["locationType", "duration"]);
-    if (step === 3) valid = await form.trigger(["amount", "workerCount"]);
-    if (valid) setStep((s) => s + 1);
-  };
-
-  const getCurrentLocation = () => {
-    if (!navigator.geolocation) { toast({ title: "Geolocation not supported", variant: "destructive" }); return; }
-    setIsGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`);
-          const data = await res.json();
-          const addr = data.address;
-          const parts = [addr?.suburb || addr?.neighbourhood, addr?.city || addr?.town, addr?.state].filter(Boolean);
-          form.setValue("location", parts.join(", ") || data.display_name?.split(",").slice(0, 3).join(","));
-        } catch { form.setValue("location", `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`); }
-        setIsGettingLocation(false);
-      },
-      () => { setIsGettingLocation(false); toast({ title: "Location Error", variant: "destructive" }); },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+  const next = async () => {
+    const fields: any = step === 1 ? ["category", "title", "description"] : ["budget", "workerCount"];
+    const ok = await form.trigger(fields);
+    if (ok) setStep(s => s + 1);
   };
 
   return (
-    <MobileLayout>
-      <div className="min-h-screen flex flex-col" style={{ background: "#F8FAF8" }}>
-      <MobileHeader title="Post a Task" />
-      <div className="flex-1 container mx-auto px-4 py-12 max-w-3xl">
-        <motion.div className="mb-8 text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Badge className="mb-4 px-4 py-1.5 bg-primary/10 text-primary border-primary/20 rounded-full">Create Task</Badge>
-          <h1 className="text-3xl font-bold mb-2 text-foreground">Post a new task</h1>
-          <p className="text-muted-foreground">Describe your task and set your requirements</p>
-        </motion.div>
+    <MobileLayout hideBottomNav>
+      <div className="min-h-screen bg-[#F8FAF9] flex flex-col">
 
-        {/* Progress */}
-        <div className="mb-8">
-          <div className="flex justify-between mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            <span className={step >= 1 ? "text-primary" : ""}>Details</span>
-            <span className={step >= 2 ? "text-primary" : ""}>Location & Duration</span>
-            <span className={step >= 3 ? "text-primary" : ""}>Budget</span>
-            <span className={step >= 4 ? "text-primary" : ""}>Review</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <motion.div className="h-full bg-primary" animate={{ width: `${(step / totalSteps) * 100}%` }} transition={{ duration: 0.3 }} />
-          </div>
+        {/* Step Header */}
+        <div className="px-6 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6 bg-white rounded-b-[40px] shadow-sm">
+           <div className="flex items-center justify-between mb-8">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => step > 1 ? setStep(s => s - 1) : window.history.back()}
+                className="w-11 h-11 bg-gray-50 rounded-2xl flex items-center justify-center"
+              >
+                <ArrowLeft size={20} className="text-gray-900" strokeWidth={3} />
+              </motion.button>
+              <div className="flex gap-1.5">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step >= i ? 'w-8 bg-[#0C6B38]' : 'w-2 bg-gray-100'}`} />
+                ))}
+              </div>
+              <div className="w-11" />
+           </div>
+
+           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+             {step === 1 ? "What's the task?" : step === 2 ? "Set your budget" : "Final Review"}
+           </h1>
+           <p className="text-gray-400 text-sm font-medium mt-1">
+             {step === 1 ? "Give your request a clear title and description." : step === 2 ? "Fair pay ensures high quality help." : "Check everything is correct."}
+           </p>
         </div>
 
-        <Card className="border-none shadow-xl">
-          <CardContent className="p-0">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <div className="p-8">
-                  <AnimatePresence mode="wait">
-                    {step === 1 && (
-                      <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Task Title</FormLabel>
-                            <FormControl><Input placeholder="e.g., Build a landing page for my startup" className="h-12 text-lg" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Description</FormLabel>
-                            <FormControl><Textarea placeholder="Describe what you need in detail..." className="min-h-[150px] text-base" {...field} /></FormControl>
-                            <FormDescription>Include any specific requirements, deliverables, or preferences.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="category" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
-                              <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="skills" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Required Skills (optional)</FormLabel>
-                            <FormControl><Input placeholder="e.g., React, Photoshop, Writing" className="h-12 mt-1.5" {...field} /></FormControl>
-                          </FormItem>
-                        )} />
-                      </motion.div>
-                    )}
-
-                    {step === 2 && (
-                      <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                        <FormField control={form.control} name="locationType" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Work Type</FormLabel>
-                            <div className="grid grid-cols-2 gap-4 mt-2">
-                              {[
-                                { value: "remote", label: "Remote", icon: Globe, desc: "Worker can be anywhere" },
-                                { value: "local", label: "Local (In-Person)", icon: MapPin, desc: "Worker must be nearby" },
-                              ].map((opt) => (
-                                <div key={opt.value}
-                                  className={`cursor-pointer rounded-xl border-2 p-5 transition-all ${field.value === opt.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"}`}
-                                  onClick={() => field.onChange(opt.value)}>
-                                  <opt.icon className={`w-6 h-6 mb-2 ${field.value === opt.value ? "text-primary" : "text-muted-foreground"}`} />
-                                  <p className="font-semibold text-foreground">{opt.label}</p>
-                                  <p className="text-xs text-muted-foreground">{opt.desc}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </FormItem>
-                        )} />
-
-                        {watchLocationType === "local" && (
-                          <FormField control={form.control} name="location" render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Location</FormLabel>
-                              <Button type="button" variant="outline" onClick={getCurrentLocation} disabled={isGettingLocation}
-                                className="w-full h-12 mb-3 border-2 border-dashed border-primary/30 hover:border-primary">
-                                {isGettingLocation ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Navigation className="w-5 h-5 mr-2 text-primary" />}
-                                {isGettingLocation ? "Getting location..." : "Use Current Location"}
-                              </Button>
-                              <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-5 h-5" /><Input placeholder="Or enter address" className="pl-10 h-12" {...field} /></div>
-                              {field.value && (
-                                <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center gap-2">
-                                  <Check className="w-4 h-4 text-primary" /><span className="text-sm text-foreground">{field.value}</span>
-                                </div>
-                              )}
-                            </FormItem>
-                          )} />
-                        )}
-
-                        <FormField control={form.control} name="duration" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Expected Duration</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl><SelectTrigger className="h-12"><SelectValue placeholder="Select duration" /></SelectTrigger></FormControl>
-                              <SelectContent>{DURATION_OPTIONS.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="deadline" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Deadline (optional)</FormLabel>
-                            <FormControl><Input type="date" className="h-12" {...field} /></FormControl>
-                          </FormItem>
-                        )} />
-                      </motion.div>
-                    )}
-
-                    {step === 3 && (
-                      <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                        <FormField control={form.control} name="workerCount" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold flex items-center gap-2"><Users className="w-5 h-5 text-accent" /> How many workers?</FormLabel>
-                            <FormDescription>Set to 1 for a single worker, or more for batch hiring.</FormDescription>
-                            <FormControl>
-                              <div className="flex items-center gap-4">
-                                <Input type="number" min="1" max="100" className="h-14 text-2xl font-mono w-28 text-center" {...field} />
-                                <span className="text-muted-foreground text-sm">worker{Number(field.value) !== 1 ? "s" : ""}</span>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="amount" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-lg font-semibold">Budget per worker ({currency.symbol})</FormLabel>
-                            <FormDescription>Enter 0 for volunteer/flexible pricing.</FormDescription>
-                            <FormControl>
-                              <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-mono text-muted-foreground">{currency.symbol}</span>
-                                <Input type="number" placeholder="0" className="h-14 text-2xl font-mono pl-10" {...field} />
-                              </div>
-                            </FormControl>
-                            {totalBudget > 0 && (
-                              <div className="mt-4 bg-muted p-4 rounded-lg space-y-2 text-sm">
-                                <div className="flex justify-between"><span className="text-muted-foreground">Per worker</span><span className="font-medium">{formatLocal(watchAmount)}</span></div>
-                                <div className="flex justify-between"><span className="text-muted-foreground">× {watchWorkerCount} workers</span><span className="font-medium">{formatLocal(totalBudget)}</span></div>
-                                <div className="flex justify-between"><span className="text-muted-foreground">Platform Fee (6%)</span><span className="font-medium">{formatLocal(platformFee)}</span></div>
-                                <div className="h-px bg-border" />
-                                <div className="flex justify-between font-bold text-base"><span>Total Cost</span><span className="text-primary">{formatLocal(totalCost)}</span></div>
-                                <p className="text-xs text-muted-foreground mt-2">Available: {formatLocal(availableBalance)}</p>
-                              </div>
-                            )}
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                      </motion.div>
-                    )}
-
-                    {step === 4 && (
-                      <motion.div key="s4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                        <h2 className="text-xl font-bold text-foreground">Review Your Task</h2>
-                        <div className="bg-muted rounded-xl p-6 space-y-4">
-                          <div><p className="text-xs text-muted-foreground uppercase">Title</p><p className="font-semibold text-foreground">{form.getValues("title")}</p></div>
-                          <div><p className="text-xs text-muted-foreground uppercase">Description</p><p className="text-sm text-foreground">{form.getValues("description")}</p></div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div><p className="text-xs text-muted-foreground uppercase">Category</p><p className="text-sm font-medium text-foreground">{CATEGORIES.find((c) => c.value === form.getValues("category"))?.label}</p></div>
-                            <div><p className="text-xs text-muted-foreground uppercase">Work Type</p><p className="text-sm font-medium text-foreground">{form.getValues("locationType") === "remote" ? "Remote" : "On-site"}</p></div>
-                            <div><p className="text-xs text-muted-foreground uppercase">Duration</p><p className="text-sm font-medium text-foreground">{DURATION_OPTIONS.find((d) => d.value === form.getValues("duration"))?.label}</p></div>
-                            <div><p className="text-xs text-muted-foreground uppercase">Workers</p><p className="text-sm font-medium text-foreground">{form.getValues("workerCount")}</p></div>
-                          </div>
-                          {totalCost > 0 && (
-                            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                              <div className="flex justify-between items-center">
-                                <span className="font-semibold text-foreground">Total Cost</span>
-                                <span className="text-xl font-bold text-primary">{formatLocal(totalCost)}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">This amount will be locked in escrow until the task is completed.</p>
-                            </div>
-                          )}
+        <div className="flex-1 px-6 pt-8 pb-32">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <AnimatePresence mode="wait">
+                {step === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-6"
+                  >
+                    <FormField control={form.control} name="category" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400">Category</FormLabel>
+                        <div className="grid grid-cols-3 gap-3">
+                           {CATEGORIES.map(cat => (
+                             <button
+                               key={cat.value}
+                               type="button"
+                               onClick={() => field.onChange(cat.value)}
+                               className={`flex flex-col items-center justify-center p-4 rounded-[24px] border-2 transition-all ${field.value === cat.value ? 'bg-[#0C6B38] border-[#0C6B38] text-white shadow-green' : 'bg-white border-gray-50 text-gray-400'}`}
+                             >
+                               <cat.icon size={20} className="mb-2" />
+                               <span className="text-[10px] font-black">{cat.label}</span>
+                             </button>
+                           ))}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
 
-                <div className="border-t border-border p-6 flex justify-between">
-                  {step > 1 ? (
-                    <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)} className="gap-2">
-                      <ArrowLeft size={16} /> Back
-                    </Button>
-                  ) : <div />}
-                  {step < totalSteps ? (
-                    <Button type="button" onClick={nextStep} className="gap-2">
-                      Next <ArrowRight size={16} />
-                    </Button>
-                  ) : (
-                    <Button type="submit" disabled={createTaskPending} className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground px-8">
-                      {createTaskPending ? <><Loader2 className="w-4 h-4 animate-spin" /> Posting...</> : <><Upload size={16} /> Post Task</>}
-                    </Button>
-                  )}
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+                    <FormField control={form.control} name="title" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400">Task Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Graphic Designer for Logo" className="h-16 rounded-2xl bg-white border-none shadow-sm font-bold text-lg px-6" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <FormField control={form.control} name="description" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400">Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Explain what you need help with..." className="min-h-[140px] rounded-[24px] bg-white border-none shadow-sm font-medium p-6 resize-none" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="space-y-8"
+                  >
+                    <div className="bg-white p-8 rounded-[40px] shadow-premium text-center">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Budget per worker</p>
+                       <div className="flex items-center justify-center gap-2">
+                          <span className="text-2xl font-black text-gray-300">₦</span>
+                          <input
+                            type="number"
+                            className="text-5xl font-black text-gray-900 w-full max-w-[200px] text-center focus:outline-none"
+                            {...form.register("budget")}
+                          />
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="bg-white p-6 rounded-[32px] border border-gray-50 text-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Workers</p>
+                          <input type="number" className="text-2xl font-black text-gray-900 w-full text-center focus:outline-none" {...form.register("workerCount")} />
+                       </div>
+                       <div className="bg-[#0C6B38]/5 p-6 rounded-[32px] border border-[#0C6B38]/10 text-center">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[#0C6B38] mb-2">Service Fee</p>
+                          <p className="text-2xl font-black text-[#0C6B38]">{formatLocal(fee)}</p>
+                       </div>
+                    </div>
+
+                    <div className="p-6 bg-gray-900 rounded-[32px] flex items-center justify-between text-white shadow-xl">
+                       <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Total Escrow</p>
+                          <p className="text-xl font-black">{formatLocal(totalCost)}</p>
+                       </div>
+                       <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                          <ShieldCheck className="text-green-400" />
+                       </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 3 && (
+                   <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-6"
+                  >
+                    <div className="bg-white rounded-[40px] p-8 border border-gray-50 shadow-premium">
+                       <div className="flex items-center gap-2 mb-6">
+                         <div className="w-1 h-8 bg-[#0C6B38] rounded-full" />
+                         <h3 className="text-xl font-black text-gray-900">Summary</h3>
+                       </div>
+
+                       <div className="space-y-6">
+                         <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Task</p>
+                            <p className="font-bold text-gray-900">{form.getValues("title")}</p>
+                         </div>
+                         <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Budget</p>
+                            <p className="font-bold text-gray-900">{formatLocal(form.getValues("budget"))} x {form.getValues("workerCount")} workers</p>
+                         </div>
+                         <div className="pt-6 border-t border-gray-50 flex justify-between items-center">
+                            <span className="text-gray-900 font-black">Grand Total</span>
+                            <span className="text-2xl font-black text-[#0C6B38]">{formatLocal(totalCost)}</span>
+                         </div>
+                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                       <Zap size={18} className="text-amber-600 shrink-0" />
+                       <p className="text-[11px] text-amber-900 font-medium leading-tight">
+                         Your funds will be held securely in escrow and only released when you approve the work.
+                       </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Bottom Nav */}
+              <div className="fixed bottom-0 left-0 right-0 p-6 z-50">
+                 <div className="mx-auto max-w-lg glass-card rounded-[32px] p-4 flex gap-4 shadow-premium-lg border-white/60">
+                    {step === 3 ? (
+                      <motion.button
+                        type="submit"
+                        disabled={createTaskPending}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-1 bg-[#0C6B38] text-white h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-green"
+                      >
+                        {createTaskPending ? <Loader2 className="animate-spin" /> : <><Upload size={20} /> Publish Task</>}
+                      </motion.button>
+                    ) : (
+                      <motion.button
+                        type="button"
+                        onClick={next}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-1 bg-gray-900 text-white h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-xl"
+                      >
+                        Continue <ArrowRight size={20} strokeWidth={3} />
+                      </motion.button>
+                    )}
+                 </div>
+              </div>
+            </form>
+          </Form>
+        </div>
       </div>
     </MobileLayout>
   );

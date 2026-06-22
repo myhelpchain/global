@@ -1,32 +1,42 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useFirebaseAuth } from "./use-firebase-auth";
+import { db } from "@/lib/firebase";
+import { taskService } from "@/lib/firebase-services";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  doc,
+  getDoc,
+  addDoc,
+  serverTimestamp,
+  updateDoc,
+  increment
+} from "firebase/firestore";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const TASK_API = `${SUPABASE_URL}/functions/v1/task-api`;
+import { walletService } from "@/lib/firebase-services";
 
 export interface TaskData {
   id: string;
-  requester_id: string;
+  creatorId: string;
   title: string;
   description: string;
   category: string;
   location: string | null;
-  is_remote: boolean;
+  locationType: string;
   urgency: string;
   budget: number;
-  platform_fee: number;
   status: string;
-  helper_id: string | null;
-  funded_from: string | null;
+  helperId: string | null;
   offers_count: number;
-  views_count: number;
-  created_at: string;
-  assigned_at: string | null;
-  completed_at: string | null;
+  createdAt: any;
+  updatedAt: any;
   profiles?: {
     full_name: string;
     avatar_url: string | null;
-    location: string | null;
   };
 }
 
@@ -38,101 +48,71 @@ export interface OfferData {
   message: string;
   delivery_time: string | null;
   status: string;
-  accepted_at: string | null;
-  created_at: string;
+  createdAt: any;
   profiles?: {
     full_name: string;
     avatar_url: string | null;
     reputation_score: number;
     total_tasks_done: number;
-    location: string | null;
   };
-}
-
-export interface ReviewData {
-  id: string;
-  task_id: string;
-  reviewer_id: string;
-  reviewee_id: string;
-  rating: number;
-  comment: string | null;
-  role: string;
-  created_at: string;
-  reviewer?: { full_name: string; avatar_url: string | null };
-  task?: { title: string };
 }
 
 export function useTasksApi() {
   const queryClient = useQueryClient();
-  const { user, getIdToken } = useFirebaseAuth();
-
-  const getAuthHeaders = async (): Promise<HeadersInit | undefined> => {
-    try {
-      const token = await getIdToken();
-      if (!token) return undefined;
-      return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    } catch {
-      return undefined;
-    }
-  };
+  const { user } = useFirebaseAuth();
 
   // My tasks
-  const { data: myTasks = [], isLoading: tasksLoading, refetch: refetchTasks } = useQuery<TaskData[]>({
+  const { data: myTasks = [], isLoading: tasksLoading } = useQuery<TaskData[]>({
     queryKey: ["my-tasks", user?.uid],
     queryFn: async () => {
-      const headers = await getAuthHeaders();
-      if (!headers) return [];
-      const res = await fetch(`${TASK_API}/tasks`, { headers });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.tasks || [];
+      if (!db || !user) return [];
+      const q = query(
+        collection(db, "tasks"),
+        where("creatorId", "==", user.uid),
+        orderBy("createdAt", "desc")
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskData));
     },
-    enabled: !!user,
-    staleTime: 15000,
+    enabled: !!user && !!db,
+    staleTime: 60000,
   });
 
   // Open tasks (marketplace)
-  const { data: openTasks = [], isLoading: openTasksLoading, refetch: refetchOpenTasks } = useQuery<TaskData[]>({
+  const { data: openTasks = [], isLoading: openTasksLoading } = useQuery<TaskData[]>({
     queryKey: ["open-tasks"],
     queryFn: async () => {
-      const headers = await getAuthHeaders();
-      if (!headers) return [];
-      const res = await fetch(`${TASK_API}/tasks/open`, { headers });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.tasks || [];
+      if (!db) return [];
+      const q = query(
+        collection(db, "tasks"),
+        where("status", "==", "published"),
+        orderBy("createdAt", "desc"),
+        limit(50)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as TaskData));
     },
-    enabled: !!user,
-    staleTime: 30000,
+    enabled: !!db,
+    staleTime: 60000,
   });
 
   // Create task
   const createTaskMutation = useMutation({
-    mutationFn: async (taskData: {
-      title: string;
-      description: string;
-      category: string;
-      location?: string;
-      locationType?: string;
-      urgency?: string;
-      budget: number;
-      workerCount: number;
-    }) => {
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Not authenticated");
-      const res = await fetch(`${TASK_API}/tasks`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(taskData),
+    mutationFn: async (taskData: any) => {
+      if (!user) throw new Error("Not authenticated");
+
+      // Lock escrow in Supabase before creating task in Firestore
+      await walletService.lockEscrow("pending", taskData.budget);
+
+      return await taskService.create({
+        ...taskData,
+        creatorId: user.uid,
+        creatorName: user.displayName || "Anonymous"
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "Failed to create task");
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
       queryClient.invalidateQueries({ queryKey: ["open-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 
@@ -141,83 +121,57 @@ export function useTasksApi() {
     openTasks,
     tasksLoading,
     openTasksLoading,
-    refetchTasks,
-    refetchOpenTasks,
     createTask: createTaskMutation.mutateAsync,
     createTaskPending: createTaskMutation.isPending,
   };
 }
 
 export function useTask(taskId: string | undefined) {
-  const { user, getIdToken } = useFirebaseAuth();
-
-  const getAuthHeaders = async (): Promise<HeadersInit | undefined> => {
-    try {
-      const token = await getIdToken();
-      if (!token) return undefined;
-      return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    } catch {
-      return undefined;
-    }
-  };
+  const { user } = useFirebaseAuth();
 
   return useQuery<TaskData | null>({
     queryKey: ["task", taskId],
     queryFn: async () => {
-      if (!taskId) return null;
-      const headers = await getAuthHeaders();
-      if (!headers) return null;
-      const res = await fetch(`${TASK_API}/tasks/${taskId}`, { headers });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.task || null;
+      if (!taskId || !db) return null;
+      const docRef = doc(db, "tasks", taskId);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return null;
+      return { id: snap.id, ...snap.data() } as TaskData;
     },
-    enabled: !!taskId && !!user,
-    staleTime: 10000,
+    enabled: !!taskId && !!user && !!db,
+    staleTime: 30000,
   });
 }
 
 export function useTaskOffers(taskId: string | undefined) {
   const queryClient = useQueryClient();
-  const { user, getIdToken } = useFirebaseAuth();
+  const { user } = useFirebaseAuth();
 
-  const getAuthHeaders = async (): Promise<HeadersInit | undefined> => {
-    try {
-      const token = await getIdToken();
-      if (!token) return undefined;
-      return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    } catch {
-      return undefined;
-    }
-  };
-
-  const { data: offers = [], isLoading, refetch } = useQuery<OfferData[]>({
+  const { data: offers = [], isLoading } = useQuery<OfferData[]>({
     queryKey: ["task-offers", taskId],
     queryFn: async () => {
-      if (!taskId) return [];
-      const headers = await getAuthHeaders();
-      if (!headers) return [];
-      const res = await fetch(`${TASK_API}/tasks/${taskId}/offers`, { headers });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.offers || [];
+      if (!taskId || !db) return [];
+      const q = query(collection(db, "offers"), where("task_id", "==", taskId), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as OfferData));
     },
-    enabled: !!taskId && !!user,
-    staleTime: 10000,
+    enabled: !!taskId && !!db,
   });
 
   const submitOfferMutation = useMutation({
-    mutationFn: async (offerData: { message: string; amount?: number; deliveryTime?: string }) => {
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Not authenticated");
-      const res = await fetch(`${TASK_API}/tasks/${taskId}/offers`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(offerData),
+    mutationFn: async (offerData: any) => {
+      if (!user || !taskId || !db) throw new Error("Not authenticated");
+      const docRef = await addDoc(collection(db, "offers"), {
+        ...offerData,
+        task_id: taskId,
+        worker_id: user.uid,
+        status: "pending",
+        createdAt: serverTimestamp(),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to submit offer");
-      return data;
+      await updateDoc(doc(db, "tasks", taskId), {
+        offers_count: increment(1)
+      });
+      return docRef.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-offers", taskId] });
@@ -227,55 +181,20 @@ export function useTaskOffers(taskId: string | undefined) {
 
   const acceptOfferMutation = useMutation({
     mutationFn: async (offerId: string) => {
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Not authenticated");
-      const res = await fetch(`${TASK_API}/offers/${offerId}/accept`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to accept offer");
-      return data;
+      if (!db || !taskId) return;
+      await updateDoc(doc(db, "offers", offerId), { status: "accepted" });
+      await updateDoc(doc(db, "tasks", taskId), { status: "in_progress", helperId: user?.uid });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-offers", taskId] });
       queryClient.invalidateQueries({ queryKey: ["task", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 
   const rejectOfferMutation = useMutation({
     mutationFn: async (offerId: string) => {
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Not authenticated");
-      const res = await fetch(`${TASK_API}/offers/${offerId}/reject`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to reject offer");
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["task-offers", taskId] });
-    },
-  });
-
-  const withdrawOfferMutation = useMutation({
-    mutationFn: async (offerId: string) => {
-      const headers = await getAuthHeaders();
-      if (!headers) throw new Error("Not authenticated");
-      const res = await fetch(`${TASK_API}/offers/${offerId}/withdraw`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to withdraw offer");
-      return data;
+      if (!db) return;
+      await updateDoc(doc(db, "offers", offerId), { status: "rejected" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-offers", taskId] });
@@ -285,82 +204,45 @@ export function useTaskOffers(taskId: string | undefined) {
   return {
     offers,
     isLoading,
-    refetch,
     submitOffer: submitOfferMutation.mutateAsync,
     submitPending: submitOfferMutation.isPending,
     acceptOffer: acceptOfferMutation.mutateAsync,
     acceptPending: acceptOfferMutation.isPending,
     rejectOffer: rejectOfferMutation.mutateAsync,
-    withdrawOffer: withdrawOfferMutation.mutateAsync,
   };
 }
 
 export function useCompleteTask() {
   const queryClient = useQueryClient();
-  const { getIdToken } = useFirebaseAuth();
+  const { user } = useFirebaseAuth();
 
   return useMutation({
-    mutationFn: async (taskId: string) => {
-      const token = await getIdToken();
-      if (!token) throw new Error("Not authenticated");
-      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-      const res = await fetch(`${TASK_API}/tasks/${taskId}/complete`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to complete task");
-      return data;
+    mutationFn: async ({ taskId, workerId, amount }: { taskId: string, workerId: string, amount: number }) => {
+      if (!db) return;
+
+      // Release escrow in Supabase
+      await walletService.releaseEscrow(taskId, workerId, amount);
+
+      // Update task status in Firestore
+      await updateDoc(doc(db, "tasks", taskId), { status: "completed" });
+
+      return { success: true };
     },
-    onSuccess: (_data, taskId) => {
+    onSuccess: (_, { taskId }) => {
       queryClient.invalidateQueries({ queryKey: ["task", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 }
 
 export function useSubmitReview() {
   const queryClient = useQueryClient();
-  const { getIdToken } = useFirebaseAuth();
-
   return useMutation({
-    mutationFn: async (reviewData: { taskId: string; revieweeId: string; rating: number; comment?: string }) => {
-      const token = await getIdToken();
-      if (!token) throw new Error("Not authenticated");
-      const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-      const res = await fetch(`${TASK_API}/reviews`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(reviewData),
+    mutationFn: async (reviewData: any) => {
+      if (!db) return;
+      await addDoc(collection(db, "reviews"), {
+        ...reviewData,
+        createdAt: serverTimestamp()
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to submit review");
-      return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-tasks"] });
-    },
-  });
-}
-
-export function useUserReviews(targetUserId: string | undefined) {
-  const { user, getIdToken } = useFirebaseAuth();
-
-  return useQuery<ReviewData[]>({
-    queryKey: ["reviews", targetUserId],
-    queryFn: async () => {
-      if (!targetUserId) return [];
-      const token = await getIdToken();
-      if (!token) return [];
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${TASK_API}/reviews/${targetUserId}`, { headers });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.reviews || [];
-    },
-    enabled: !!targetUserId && !!user,
-    staleTime: 30000,
   });
 }

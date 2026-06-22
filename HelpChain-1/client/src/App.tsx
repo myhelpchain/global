@@ -8,11 +8,14 @@ import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
 import { MobileMenuProvider } from "@/contexts/mobile-menu-context";
 import { RealtimeProvider } from "@/contexts/RealtimeContext";
 import { SplashScreen } from "@/components/layout/SplashScreen";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Chatbot } from "@/components/chatbot/chatbot";
+import { Capacitor } from "@capacitor/core";
+import { StatusBar, Style } from "@capacitor/status-bar";
 
 import NotFound from "@/pages/not-found";
+// ... (rest of imports)
 import Home from "@/pages/home";
 import IntroOnboardingPage from "@/pages/intro-onboarding";
 import AuthPage from "@/pages/auth";
@@ -50,15 +53,22 @@ function P({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
 
-const pageVariants = {
-  initial: { opacity: 0, y: 12, scale: 0.99 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -8, scale: 1.005 },
-};
-
-const pageTransition = {
-  duration: 0.28,
-  ease: "easeInOut" as const,
+const pageVariants: Variants = {
+  initial: { opacity: 0, x: 100 },
+  animate: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 30
+    }
+  },
+  exit: {
+    opacity: 0,
+    x: -20,
+    transition: { duration: 0.2 }
+  },
 };
 
 function AnimatedPage({ children }: { children: React.ReactNode }) {
@@ -68,8 +78,12 @@ function AnimatedPage({ children }: { children: React.ReactNode }) {
       animate="animate"
       exit="exit"
       variants={pageVariants}
-      transition={pageTransition}
-      style={{ minHeight: "100%" }}
+      style={{
+        minHeight: "100%",
+        width: "100%",
+        position: "absolute",
+        background: "#F8FAF9"
+      }}
     >
       {children}
     </motion.div>
@@ -80,66 +94,60 @@ function Router() {
   const [location] = useLocation();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <Switch key={location} location={location}>
-        <Route path="/"              component={Home} />
-        <Route path="/intro"         component={IntroOnboardingPage} />
-        <Route path="/auth"          component={AuthPage} />
-        <Route path="/onboarding"    component={OnboardingPage} />
+    <div className="relative w-full h-full overflow-hidden">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <Switch key={location} location={location}>
+          <Route path="/"              component={Home} />
+          <Route path="/intro"         component={IntroOnboardingPage} />
+          <Route path="/auth"          component={AuthPage} />
+          <Route path="/onboarding"    component={OnboardingPage} />
 
-        <Route path="/discover"      component={DiscoverPage} />
-        <Route path="/search"        component={DiscoverPage} />
-        <Route path="/how-it-works"  component={HowItWorks} />
-        <Route path="/safety"        component={SafetyPage} />
-        <Route path="/stories"       component={StoriesPage} />
-        <Route path="/volunteers"    component={VolunteersPage} />
-        <Route path="/blog"          component={BlogPage} />
-        <Route path="/events"        component={EventsPage} />
-        <Route path="/help"          component={HelpPage} />
-        <Route path="/contact"       component={ContactPage} />
-        <Route path="/terms"         component={TermsPage} />
-        <Route path="/privacy"       component={PrivacyPage} />
-        <Route path="/sitemap"       component={SitemapPage} />
-        <Route path="/about"         component={AboutPage} />
-        <Route path="/pricing"       component={PricingPage} />
-        <Route path="/careers"       component={CareersPage} />
-        <Route path="/press"         component={PressPage} />
-        <Route path="/cookies"       component={CookiesPage} />
+          <Route path="/discover">
+            {() => <AnimatedPage><DiscoverPage /></AnimatedPage>}
+          </Route>
+          <Route path="/search">
+            {() => <AnimatedPage><DiscoverPage /></AnimatedPage>}
+          </Route>
 
-        <Route path="/request/:id"            component={RequestDetails} />
-        <Route path="/public-profile/:userId" component={PublicProfilePage} />
+          <Route path="/request/:id">
+            {() => <AnimatedPage><RequestDetails /></AnimatedPage>}
+          </Route>
+          <Route path="/public-profile/:userId">
+            {() => <AnimatedPage><PublicProfilePage /></AnimatedPage>}
+          </Route>
 
-        <Route path="/dashboard">
-          {() => <P><AnimatedPage><Dashboard /></AnimatedPage></P>}
-        </Route>
-        <Route path="/create-request">
-          {() => <P><AnimatedPage><CreateRequest /></AnimatedPage></P>}
-        </Route>
-        <Route path="/create-offer">
-          {() => <P><AnimatedPage><CreateOfferPage /></AnimatedPage></P>}
-        </Route>
-        <Route path="/admin">
-          {() => <P><AnimatedPage><AdminDashboard /></AnimatedPage></P>}
-        </Route>
-        <Route path="/messages">
-          {() => <P><AnimatedPage><MessagesPage /></AnimatedPage></P>}
-        </Route>
-        <Route path="/wallet">
-          {() => <P><AnimatedPage><WalletPage /></AnimatedPage></P>}
-        </Route>
-        <Route path="/settings">
-          {() => <P><AnimatedPage><SettingsPage /></AnimatedPage></P>}
-        </Route>
-        <Route path="/profile">
-          {() => <P><AnimatedPage><ProfilePage /></AnimatedPage></P>}
-        </Route>
-        <Route path="/batch/:id">
-          {() => <P><AnimatedPage><BatchManagementPage /></AnimatedPage></P>}
-        </Route>
+          <Route path="/dashboard">
+            {() => <P><AnimatedPage><Dashboard /></AnimatedPage></P>}
+          </Route>
+          <Route path="/create-request">
+            {() => <P><AnimatedPage><CreateRequest /></AnimatedPage></P>}
+          </Route>
+          <Route path="/create-offer">
+            {() => <P><AnimatedPage><CreateOfferPage /></AnimatedPage></P>}
+          </Route>
+          <Route path="/admin">
+            {() => <P><AnimatedPage><AdminDashboard /></AnimatedPage></P>}
+          </Route>
+          <Route path="/messages">
+            {() => <P><AnimatedPage><MessagesPage /></AnimatedPage></P>}
+          </Route>
+          <Route path="/wallet">
+            {() => <P><AnimatedPage><WalletPage /></AnimatedPage></P>}
+          </Route>
+          <Route path="/settings">
+            {() => <P><AnimatedPage><SettingsPage /></AnimatedPage></P>}
+          </Route>
+          <Route path="/profile">
+            {() => <P><AnimatedPage><ProfilePage /></AnimatedPage></P>}
+          </Route>
+          <Route path="/batch/:id">
+            {() => <P><AnimatedPage><BatchManagementPage /></AnimatedPage></P>}
+          </Route>
 
-        <Route component={NotFound} />
-      </Switch>
-    </AnimatePresence>
+          <Route component={NotFound} />
+        </Switch>
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -169,6 +177,14 @@ function AppShell() {
 }
 
 function App() {
+  useEffect(() => {
+    // Edge-to-edge support for Mobile Devices
+    if (Capacitor.isNativePlatform()) {
+      StatusBar.setOverlaysWebView({ overlay: true }).catch(console.error);
+      StatusBar.setStyle({ style: Style.Dark }).catch(console.error);
+    }
+  }, []);
+
   return (
     <FirebaseAuthProvider>
       <MobileMenuProvider>

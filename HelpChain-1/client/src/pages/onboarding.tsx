@@ -10,8 +10,9 @@ import {
   MapPin, Loader2, ChevronRight, ChevronLeft,
   Sparkles, User, Briefcase, Check, Navigation,
   Users, Award, SlidersHorizontal, Phone, Globe,
-  Clock, ArrowRight, CheckCircle2, X
+  Clock, ArrowRight, CheckCircle2
 } from "lucide-react";
+import { HelpChainLogo } from "@/components/ui/helpchain-logo";
 
 /* ── constants ───────────────────────────────────────────── */
 const GREEN = "#0C6B38";
@@ -221,6 +222,18 @@ export default function OnboardingPage() {
   const toggleAvail = (id: string) =>
     setAvailability((p) => p.includes(id) ? p.filter((a) => a !== id) : [...p, id]);
 
+  const profileStrength =
+    18 +
+    (fullName.trim() ? 12 : 0) +
+    (location.trim() ? 12 : 0) +
+    (bio.trim().length >= 40 ? 14 : bio.trim() ? 7 : 0) +
+    (profession.trim() ? 10 : 0) +
+    (experienceLevel ? 10 : 0) +
+    Math.min(selectedSkills.length * 4, 16) +
+    (availability.length ? 8 : 0);
+
+  const matchingBoost = Math.min(profileStrength, 100);
+
   /* geolocation */
   const getCurrentLocation = () => {
     setGettingLocation(true);
@@ -244,12 +257,6 @@ export default function OnboardingPage() {
     );
   };
 
-  /* skip entire setup */
-  const handleSkipAll = () => {
-    localStorage.setItem("hc-onboarding-skipped", "true");
-    setLocation("/dashboard");
-  };
-
   /* complete setup */
   const handleComplete = async () => {
     setSaving(true);
@@ -259,6 +266,8 @@ export default function OnboardingPage() {
       accountType, fullName, phone, location, bio, profession,
       experienceLevel, educationLevel, selectedSkills,
       availability, languages, rateMin, rateMax,
+      profileStrength: matchingBoost,
+      matchingBoost,
       completedAt: new Date().toISOString(),
     };
     localStorage.setItem("hc-onboarding-data", JSON.stringify(localData));
@@ -272,6 +281,13 @@ export default function OnboardingPage() {
         location: location.trim() || undefined,
         skills: selectedSkills,
         email: user?.email || undefined,
+        account_type: accountType,
+        profession: profession.trim() || undefined,
+        experience_level: experienceLevel || undefined,
+        availability,
+        languages,
+        profile_strength: matchingBoost,
+        onboarding_completed: true,
       });
       if (fullName.trim() && fullName.trim() !== user?.displayName) {
         await updateUserProfile({ displayName: fullName.trim() });
@@ -288,7 +304,7 @@ export default function OnboardingPage() {
   /* guards */
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8FAF8" }}>
+      <div className="h-[100dvh] flex items-center justify-center" style={{ background: "#F8FAF8" }}>
         <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${GREEN} transparent transparent transparent` }} />
       </div>
     );
@@ -299,27 +315,21 @@ export default function OnboardingPage() {
   const progress = (step / (STEPS.length - 1)) * 100;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(135deg, #F0FDF4 0%, #F8FAF8 50%, #EFF6FF 100%)" }}>
+    <div className="min-h-[100dvh] flex flex-col" style={{ background: "linear-gradient(135deg, #F0FDF4 0%, #F8FAF8 50%, #EFF6FF 100%)", paddingBottom: "env(safe-area-inset-bottom, 20px)" }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4">
+      <div className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-4 shrink-0">
         <div className="flex items-center gap-2">
-          <img
-            src="/images/helpchain-logo.png" alt="HelpChain"
-            className="h-7 w-auto" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
+          <HelpChainLogo size="sm" />
           <span className="font-bold text-lg" style={{ color: GREEN }}>HelpChain</span>
         </div>
-        <button
-          onClick={handleSkipAll}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors px-3 py-1.5 rounded-full hover:bg-gray-100"
-        >
-          <X className="w-3 h-3" /> Skip setup
-        </button>
+        <div className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-bold text-gray-500">
+          {matchingBoost}% match ready
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-6">
-        <div className="w-full max-w-md">
+      <div className="flex-1 overflow-y-auto px-4 py-6" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="w-full max-w-md mx-auto">
 
           {/* Dots + progress */}
           <div className="mb-6 space-y-3">
@@ -334,6 +344,24 @@ export default function OnboardingPage() {
             </div>
             <p className="text-center text-xs text-gray-400">
               Step {step + 1} of {STEPS.length} — <span className="font-medium">{STEPS[step].label}</span>
+            </p>
+          </div>
+
+          <div className="mb-6 rounded-2xl border border-white/70 bg-white/75 p-3 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-gray-400">Profile strength</span>
+              <span className="text-xs font-black" style={{ color: GREEN }}>{matchingBoost}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: `linear-gradient(90deg, ${GREEN}, #22C55E)` }}
+                animate={{ width: `${matchingBoost}%` }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              />
+            </div>
+            <p className="mt-2 text-[11px] font-medium leading-4 text-gray-400">
+              Stronger setup improves matching, trust, and visibility inside HelpChain.
             </p>
           </div>
 
@@ -497,58 +525,45 @@ export default function OnboardingPage() {
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Short Bio <span className="normal-case font-normal text-gray-400">(optional)</span></label>
+                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">Short Bio</label>
                       <Textarea
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
-                        placeholder="What do you do? What are you good at? e.g., 'I'm a Lagos-based graphic designer with 5 years of branding experience.'"
-                        className="rounded-xl border-gray-200 focus:border-[#0C6B38] text-sm min-h-[90px] resize-none"
+                        placeholder="What do you do? What are you good at?"
+                        className="rounded-2xl bg-gray-50 border-none focus:ring-[#0C6B38]/10 text-sm min-h-[90px] resize-none p-4"
                         maxLength={400}
                       />
-                      <p className="text-xs text-gray-400 mt-1 text-right">{bio.length}/400</p>
+                      <p className="text-[10px] text-gray-300 mt-1 text-right font-black">{bio.length}/400</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Profession / Trade <span className="normal-case font-normal text-gray-400">(optional)</span></label>
+                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-1.5">Profession</label>
                       <Input
                         value={profession}
                         onChange={(e) => setProfession(e.target.value)}
-                        placeholder="e.g., Software Engineer, Plumber, Teacher, Accountant…"
-                        className="h-12 rounded-xl border-gray-200 focus:border-[#0C6B38] text-sm"
+                        placeholder="e.g., Software Engineer"
+                        className="h-14 rounded-2xl bg-gray-50 border-none font-bold"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Experience Level <span className="normal-case font-normal text-gray-400">(optional)</span></label>
-                      <div className="space-y-2">
+                      <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Experience</label>
+                      <div className="grid grid-cols-1 gap-2">
                         {EXPERIENCE_LEVELS.map((lvl) => {
                           const sel = experienceLevel === lvl.id;
                           return (
                             <button
                               key={lvl.id}
                               onClick={() => setExperienceLevel(lvl.id)}
-                              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all text-left"
-                              style={{ borderColor: sel ? GREEN : "#E5E7EB", background: sel ? "#F0FDF4" : "white" }}
+                              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all text-left ${sel ? 'bg-[#0C6B38] border-[#0C6B38] text-white shadow-green' : 'bg-white border-gray-50 text-gray-400'}`}
                             >
                               <div>
-                                <span className="text-sm font-semibold text-gray-800">{lvl.label}</span>
-                                <span className="text-xs text-gray-400 ml-2">{lvl.sub}</span>
+                                <p className={`text-sm font-black ${sel ? 'text-white' : 'text-gray-900'}`}>{lvl.label}</p>
+                                <p className={`text-[10px] font-bold ${sel ? 'text-white/60' : 'text-gray-400'}`}>{lvl.sub}</p>
                               </div>
-                              {sel && <Check className="w-4 h-4" style={{ color: GREEN }} />}
+                              {sel && <CheckCircle2 size={18} className="text-white" />}
                             </button>
                           );
                         })}
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Education <span className="normal-case font-normal text-gray-400">(optional)</span></label>
-                      <select
-                        value={educationLevel}
-                        onChange={(e) => setEducationLevel(e.target.value)}
-                        className="w-full h-12 px-3.5 rounded-xl border-2 bg-white text-sm font-medium outline-none transition-colors text-gray-700"
-                        style={{ borderColor: educationLevel ? GREEN : "#E5E7EB" }}
-                      >
-                        <option value="">Select education level</option>
-                        {EDUCATION_LEVELS.map((e) => <option key={e} value={e}>{e}</option>)}
-                      </select>
                     </div>
                   </div>
                   <NavBtns onBack={() => setStep(2)} onNext={() => setStep(4)} onSkip={() => setStep(4)} />
@@ -564,7 +579,7 @@ export default function OnboardingPage() {
                     <h2 className="text-xl font-bold text-gray-900">What are your skills?</h2>
                     <p className="text-sm text-gray-400 mt-1">Select all that apply — this can be changed anytime.</p>
                   </div>
-                  <div className="space-y-5 max-h-[340px] overflow-y-auto pr-1">
+                  <div className="space-y-5">
                     {SKILL_CATEGORIES.map((cat) => (
                       <div key={cat.label}>
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{cat.label}</p>
@@ -662,12 +677,9 @@ export default function OnboardingPage() {
                     nextLabel="Complete Setup"
                     saving={saving}
                   />
-                  <button
-                    onClick={handleSkipAll}
-                    className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors py-2 mt-1"
-                  >
-                    I'll fill this in later
-                  </button>
+                  <p className="mt-3 text-center text-[11px] font-medium leading-4 text-gray-400">
+                    You can edit these details later, but finishing now helps HelpChain match you better.
+                  </p>
                 </Card>
               </motion.div>
             )}

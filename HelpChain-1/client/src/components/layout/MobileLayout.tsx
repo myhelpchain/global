@@ -11,12 +11,18 @@ interface MobileLayoutProps {
 export function MobileLayout({ children, hideBottomNav, className, noPadding }: MobileLayoutProps) {
   return (
     <div
-      className="min-h-screen flex flex-col"
-      style={{ background: "#F5F7F5", fontFamily: "'Figtree', sans-serif" }}
+      className="min-h-screen flex flex-col overflow-x-hidden"
+      style={{
+        background: "#F5F7F5",
+        fontFamily: "'Figtree', sans-serif",
+      }}
     >
       <div
-        className={`flex-1 ${className || ""}`}
-        style={{ paddingBottom: hideBottomNav || noPadding ? "0" : "calc(88px + env(safe-area-inset-bottom, 0px))" }}
+        className={`flex-1 overflow-y-auto ${className || ""}`}
+        style={{
+          paddingBottom: hideBottomNav || noPadding ? "20px" : "calc(100px + env(safe-area-inset-bottom, 0px))",
+          WebkitOverflowScrolling: "touch"
+        }}
       >
         {children}
       </div>

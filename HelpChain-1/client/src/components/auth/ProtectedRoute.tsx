@@ -14,10 +14,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const onboardingDone = typeof localStorage !== "undefined"
     ? localStorage.getItem("hc-onboarding-done") === "true"
     : false;
-  const onboardingSkipped = typeof localStorage !== "undefined"
-    ? localStorage.getItem("hc-onboarding-skipped") === "true"
-    : false;
-  const needsOnboarding = !onboardingDone && !onboardingSkipped;
+  const needsOnboarding = !onboardingDone;
 
   useEffect(() => {
     if (loading) return;

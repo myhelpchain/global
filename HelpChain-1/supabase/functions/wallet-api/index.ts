@@ -152,9 +152,9 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ message: 'Minimum deposit is ₦100' }, 400);
       }
 
-      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY') || Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) {
-        console.error('[wallet-api] PAYSTACK_API_KEY not set');
+        console.error('[wallet-api] PAYSTACK_SECRET_KEY not set');
         throw new Error('Payment service not configured');
       }
 
@@ -214,7 +214,7 @@ Deno.serve(async (req: Request) => {
       const { reference } = await req.json();
       console.log(`[wallet-api] Verify deposit: ref=${reference}`);
 
-      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY') || Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) throw new Error('Payment service not configured');
 
       const verifyRes = await fetch(
@@ -306,9 +306,11 @@ Deno.serve(async (req: Request) => {
 
       const newBalance = balance - amount;
 
-      if (!walletAddress && bankCode && accountNumber) {
-        const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
+      if (!walletAddress && (bankCode || (req as any).bank) && accountNumber) {
+        const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY') || Deno.env.get('PAYSTACK_API_KEY');
         if (!paystackKey) throw new Error('Payment service not configured');
+
+        const actualBankCode = bankCode || (req as any).bank || (await req.clone().json()).bank;
 
         const recipientRes = await fetch('https://api.paystack.co/transferrecipient', {
           method: 'POST',
@@ -317,7 +319,7 @@ Deno.serve(async (req: Request) => {
             type: 'nuban',
             name: accountName || 'HelpChain User',
             account_number: accountNumber,
-            bank_code: bankCode,
+            bank_code: actualBankCode,
             currency: 'NGN',
           }),
         });
@@ -401,7 +403,7 @@ Deno.serve(async (req: Request) => {
 
     // ─── GET /banks (Paystack bank list) ────────────────────
     if (req.method === 'GET' && route === '/banks') {
-      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY') || Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) throw new Error('Payment service not configured');
 
       const res = await fetch('https://api.paystack.co/bank?country=nigeria', {
@@ -414,7 +416,7 @@ Deno.serve(async (req: Request) => {
     // ─── POST /verify-account (Paystack account verification) ─
     if (req.method === 'POST' && route === '/verify-account') {
       const { accountNumber, bankCode } = await req.json();
-      const paystackKey = Deno.env.get('PAYSTACK_API_KEY');
+      const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY') || Deno.env.get('PAYSTACK_API_KEY');
       if (!paystackKey) throw new Error('Payment service not configured');
 
       const res = await fetch(
@@ -426,6 +428,93 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ message: data.message || 'Could not verify account' }, 400);
       }
       return jsonResponse({ accountName: data.data.account_name });
+    }
+
+    // ─── POST /wallet/escrow/lock ───────────────────────────
+    if (req.method === 'POST' && route === '/wallet/escrow/lock') {
+      const { taskId, amount } = await req.json();
+
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!wallet || Number(wallet.available_balance) < amount) {
+        return jsonResponse({ error: 'Insufficient balance' }, 400);
+      }
+
+      const newAvailable = Number(wallet.available_balance) - amount;
+      const newEscrow = Number(wallet.escrow_balance) + amount;
+
+      await supabase.from('wallets').update({
+        available_balance: newAvailable,
+        escrow_balance: newEscrow
+      }).eq('id', wallet.id);
+
+      await supabase.from('wallet_transactions').insert({
+        user_id: userId,
+        transaction_type: 'escrow_lock',
+        amount,
+        balance_before: wallet.available_balance,
+        balance_after: newAvailable,
+        status: 'completed',
+        description: `Escrow locked for task ${taskId.slice(0, 8)}`,
+        metadata: { task_id: taskId }
+      });
+
+      return jsonResponse({ success: true });
+    }
+
+    // ─── POST /wallet/escrow/release ────────────────────────
+    if (req.method === 'POST' && route === '/wallet/escrow/release') {
+      const { taskId, workerId, amount } = await req.json();
+
+      // 1. Deduct from requester's escrow
+      const { data: reqWallet } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!reqWallet || Number(reqWallet.escrow_balance) < amount) {
+        return jsonResponse({ error: 'Insufficient escrow balance' }, 400);
+      }
+
+      await supabase.from('wallets').update({
+        escrow_balance: Number(reqWallet.escrow_balance) - amount
+      }).eq('id', reqWallet.id);
+
+      // 2. Add to worker's available balance
+      let { data: workerWallet } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', workerId)
+        .maybeSingle();
+
+      if (!workerWallet) {
+        const { data: newW } = await supabase.from('wallets').insert({
+          user_id: workerId, available_balance: amount, escrow_balance: 0
+        }).select().single();
+        workerWallet = newW;
+      } else {
+        await supabase.from('wallets').update({
+          available_balance: Number(workerWallet.available_balance) + amount
+        }).eq('id', workerWallet.id);
+      }
+
+      await supabase.from('wallet_transactions').insert({
+        user_id: workerId,
+        transaction_type: 'earning',
+        amount,
+        balance_before: workerWallet?.available_balance || 0,
+        balance_after: Number(workerWallet?.available_balance || 0) + amount,
+        status: 'completed',
+        description: `Earning from task ${taskId.slice(0, 8)}`,
+        metadata: { task_id: taskId }
+      });
+
+      return jsonResponse({ success: true });
     }
 
     console.log(`[wallet-api] 404 for route: ${route}`);

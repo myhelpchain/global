@@ -6,6 +6,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, User, Loader2, ArrowLeft, Sparkles } from "lucide-react";
+import { HelpChainLogo } from "@/components/ui/helpchain-logo";
 
 const GREEN = "#0C6B38";
 
@@ -32,8 +33,7 @@ export default function AuthPage() {
   useEffect(() => {
     if (user) {
       const onboardingDone = localStorage.getItem("hc-onboarding-done");
-      const onboardingSkipped = localStorage.getItem("hc-onboarding-skipped");
-      setLocation((onboardingDone || onboardingSkipped) ? "/dashboard" : "/onboarding");
+      setLocation(onboardingDone ? "/dashboard" : "/onboarding");
     }
   }, [user, setLocation]);
 
@@ -80,10 +80,9 @@ export default function AuthPage() {
     try {
       await signInWithGoogle();
       const onboardingDone = localStorage.getItem("hc-onboarding-done");
-      const onboardingSkipped = localStorage.getItem("hc-onboarding-skipped");
       setTimeout(() => sendWelcomeNotification(user?.displayName || undefined), 2000);
       toast({ title: "Welcome!" });
-      setLocation((onboardingDone || onboardingSkipped) ? "/dashboard" : "/onboarding");
+      setLocation(onboardingDone ? "/dashboard" : "/onboarding");
     } catch (error: any) {
       if (error?.message?.includes("cancelled") || error?.code === "auth/popup-closed-by-user") return;
       toast({ title: "Error", description: error.message || "Failed to sign in", variant: "destructive" });
@@ -138,7 +137,7 @@ export default function AuthPage() {
           />
         </div>
 
-        <div className="relative flex items-center justify-between px-5 pt-14 pb-0">
+        <div className="relative flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-0">
           <motion.button
             whileTap={{ scale: 0.88 }}
             onClick={() => setLocation("/intro")}
@@ -150,15 +149,10 @@ export default function AuthPage() {
 
           <div className="flex items-center gap-2.5">
             <div
-              className="w-8 h-8 rounded-[10px] flex items-center justify-center"
+              className="w-10 h-8 rounded-[10px] flex items-center justify-center"
               style={{ background: "rgba(255,255,255,0.14)" }}
             >
-              <img
-                src="/images/helpchain-logo.png"
-                alt="HelpChain"
-                className="w-5 h-5 object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
+              <HelpChainLogo size="xs" />
             </div>
             <span className="text-white font-bold text-[15px]">HelpChain</span>
           </div>

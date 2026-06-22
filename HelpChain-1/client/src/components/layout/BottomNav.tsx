@@ -6,8 +6,8 @@ import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 
 const tabs = [
   { href: "/dashboard", icon: Home,          label: "Home"     },
-  { href: "/discover",  icon: Search,        label: "Explore"  },
-  { href: "/messages",  icon: MessageCircle, label: "Messages" },
+  { href: "/discover",  icon: Search,        label: "Tasks"    },
+  { href: "/messages",  icon: MessageCircle, label: "Chat"     },
   { href: "/profile",   icon: User,          label: "Profile"  },
 ];
 
@@ -29,82 +29,55 @@ export function BottomNav() {
   };
 
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-50"
-      style={{
-        background: "rgba(255,255,255,0.95)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        borderTop: "1px solid rgba(0,0,0,0.06)",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        boxShadow: "0 -8px 32px rgba(0,0,0,0.06), 0 -1px 0 rgba(0,0,0,0.04)",
-      }}
-    >
-      <div className="flex items-end justify-around px-2 pt-2 pb-2.5">
-
+    <div className="fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom,0px)]">
+      <div
+        className="mx-auto max-w-lg mb-4 px-4 h-[76px] flex items-center justify-between glass-card rounded-[32px] shadow-premium-lg border-white/40"
+        style={{ width: "calc(100% - 32px)" }}
+      >
         {tabs.slice(0, 2).map((tab) => {
           const active = isActive(tab.href);
           return (
             <Link key={tab.href} href={tab.href}>
               <motion.div
-                whileTap={{ scale: 0.86 }}
-                className="flex flex-col items-center gap-1 px-5 py-1.5 rounded-2xl cursor-pointer relative"
+                whileTap={{ scale: 0.9, y: 2 }}
+                className="relative flex flex-col items-center justify-center w-14 h-14 cursor-pointer"
               >
                 <AnimatePresence>
                   {active && (
                     <motion.div
-                      layoutId="navPill"
-                      className="absolute inset-0 rounded-2xl"
-                      style={{ background: "rgba(12,107,56,0.09)" }}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                      layoutId="active-pill"
+                      className="absolute inset-0 bg-[#0C6B38]/10 rounded-2xl"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
                 </AnimatePresence>
-                <motion.div
-                  animate={{ y: active ? -1 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <tab.icon
-                    className="w-[22px] h-[22px] transition-all duration-200"
-                    style={{
-                      color: active ? "#0C6B38" : "#9CA3AF",
-                      strokeWidth: active ? 2.3 : 1.7,
-                    }}
-                  />
-                </motion.div>
-                <motion.span
-                  className="text-[10px] font-semibold relative z-10 transition-all duration-200"
-                  animate={{ color: active ? "#0C6B38" : "#9CA3AF" }}
-                >
+                <tab.icon
+                  className={`w-6 h-6 transition-all duration-300 ${active ? "text-[#0C6B38] stroke-[2.5px]" : "text-gray-400 stroke-[1.8px]"}`}
+                />
+                <span className={`text-[10px] mt-1 font-bold tracking-tight ${active ? "text-[#0C6B38]" : "text-gray-400"}`}>
                   {tab.label}
-                </motion.span>
+                </span>
               </motion.div>
             </Link>
           );
         })}
 
-        {/* Create FAB */}
+        {/* Floating Action Button */}
         <Link href="/create-request">
           <motion.div
-            whileTap={{ scale: 0.88 }}
-            className="flex flex-col items-center gap-1 cursor-pointer -mt-5"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.92, rotate: 5 }}
+            className="flex flex-col items-center justify-center -mt-8"
           >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="w-[58px] h-[58px] rounded-[20px] flex items-center justify-center"
+            <div
+              className="w-[64px] h-[64px] rounded-[24px] flex items-center justify-center shadow-green-lg"
               style={{
-                background: "linear-gradient(140deg, #0C6B38 0%, #15A34A 100%)",
-                boxShadow: "0 8px 24px rgba(12,107,56,0.45), 0 2px 8px rgba(12,107,56,0.3), inset 0 1px 0 rgba(255,255,255,0.15)",
+                background: "linear-gradient(135deg, #0C6B38 0%, #15A34A 100%)",
+                border: "2px solid rgba(255,255,255,0.2)"
               }}
             >
-              <Plus className="w-6 h-6 text-white" strokeWidth={2.5} />
-            </motion.div>
-            <span className="text-[10px] font-semibold mt-0.5" style={{ color: "#9CA3AF" }}>
-              Create
-            </span>
+              <Plus className="w-8 h-8 text-white" strokeWidth={3} />
+            </div>
           </motion.div>
         </Link>
 
@@ -114,55 +87,35 @@ export function BottomNav() {
           return (
             <Link key={tab.href} href={tab.href}>
               <motion.div
-                whileTap={{ scale: 0.86 }}
-                className="flex flex-col items-center gap-1 px-5 py-1.5 rounded-2xl cursor-pointer relative"
+                whileTap={{ scale: 0.9, y: 2 }}
+                className="relative flex flex-col items-center justify-center w-14 h-14 cursor-pointer"
               >
                 <AnimatePresence>
                   {active && (
                     <motion.div
-                      layoutId={`navPill-${tab.href}`}
-                      className="absolute inset-0 rounded-2xl"
-                      style={{ background: "rgba(12,107,56,0.09)" }}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                      layoutId="active-pill-2"
+                      className="absolute inset-0 bg-[#0C6B38]/10 rounded-2xl"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}
                 </AnimatePresence>
                 <div className="relative">
-                  <motion.div
-                    animate={{ y: active ? -1 : 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <tab.icon
-                      className="w-[22px] h-[22px] transition-all duration-200"
-                      style={{
-                        color: active ? "#0C6B38" : "#9CA3AF",
-                        strokeWidth: active ? 2.3 : 1.7,
-                      }}
-                    />
-                  </motion.div>
-                  <AnimatePresence>
-                    {badge > 0 && (
-                      <motion.span
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-0.5 rounded-full text-white text-[9px] font-bold flex items-center justify-center"
-                        style={{ background: "#EF4444" }}
-                      >
-                        {badge > 9 ? "9+" : badge}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                  <tab.icon
+                    className={`w-6 h-6 transition-all duration-300 ${active ? "text-[#0C6B38] stroke-[2.5px]" : "text-gray-400 stroke-[1.8px]"}`}
+                  />
+                  {badge > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-500 rounded-full text-white text-[9px] font-black flex items-center justify-center border-2 border-white shadow-sm"
+                    >
+                      {badge > 9 ? "9+" : badge}
+                    </motion.span>
+                  )}
                 </div>
-                <motion.span
-                  className="text-[10px] font-semibold relative z-10 transition-all duration-200"
-                  animate={{ color: active ? "#0C6B38" : "#9CA3AF" }}
-                >
+                <span className={`text-[10px] mt-1 font-bold tracking-tight ${active ? "text-[#0C6B38]" : "text-gray-400"}`}>
                   {tab.label}
-                </motion.span>
+                </span>
               </motion.div>
             </Link>
           );

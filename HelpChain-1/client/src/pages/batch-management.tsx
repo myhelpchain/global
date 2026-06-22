@@ -32,7 +32,7 @@ export default function BatchManagementPage() {
   const { data: task, isLoading: taskLoading } = useTask(taskId);
   const { offers, isLoading: offersLoading, acceptOffer, rejectOffer } = useTaskOffers(taskId);
 
-  const isRequester = task?.requester_id === user?.uid;
+  const isRequester = task?.creatorId === user?.uid;
 
   if (taskLoading || offersLoading) {
     return (
@@ -123,7 +123,7 @@ export default function BatchManagementPage() {
                     <Users className="w-3.5 h-3.5" /> {offers.length} offer{offers.length !== 1 ? "s" : ""}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <Clock className="w-3.5 h-3.5" /> {format(new Date(task.created_at), "MMM d, yyyy")}
+                    <Clock className="w-3.5 h-3.5" /> {task.createdAt && format(new Date(task.createdAt?.toDate?.() || task.createdAt), "MMM d, yyyy")}
                   </span>
                 </div>
               </div>
@@ -195,7 +195,7 @@ export default function BatchManagementPage() {
                               <Clock className="w-3 h-3 inline mr-1" />Delivery: {offer.delivery_time}
                             </p>
                           )}
-                          {isRequester && task.status === "open" && (
+                          {isRequester && task.status === "published" && (
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleAccept(offer.id)}

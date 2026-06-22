@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth";
 import { useRoute, useLocation, Link } from "wouter";
-import { MobileHeader } from "@/components/layout/MobileHeader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -11,91 +10,43 @@ import { useTask, useTaskOffers, useCompleteTask, useSubmitReview } from "@/hook
 import {
   MapPin, Calendar, Clock, Star, ChevronLeft, Check, X,
   Globe, Shield, Users, CheckCircle2, CircleDot, Circle, Play,
-  Send, TrendingUp, AlertCircle, Loader2, MessageCircle
+  Send, TrendingUp, AlertCircle, Loader2, MessageCircle, ArrowLeft,
+  Share2, MoreVertical, Briefcase, Award, ChevronRight, ArrowUpRight
 } from "lucide-react";
 import { format } from "date-fns";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const GREEN = "#0C6B38";
 
 const CATEGORY_LABELS: Record<string, string> = {
   physical_help: "Physical Help", errands: "Errands", tech_help: "Tech Help",
-  guidance: "Guidance", transportation: "Transportation", home_repairs: "Home Repairs",
-  childcare: "Childcare", pet_care: "Pet Care", tutoring: "Tutoring",
-  digital_work: "Digital Work", design: "Design", writing: "Writing",
-  programming: "Programming", marketing: "Marketing", research: "Research",
-  education: "Education", translation: "Translation", consulting: "Consulting",
-  home_services: "Home Services", photography: "Photography",
-  event_planning: "Event Planning", fitness: "Fitness & Health",
-  cooking: "Cooking & Catering", personal_shopping: "Personal Shopping",
-  legal: "Legal & Finance", other: "Other",
+  home_repairs: "Home Repairs", tutoring: "Tutoring", design: "Design",
+  programming: "Programming", marketing: "Marketing", other: "Other",
 };
 
 const CATEGORY_IMAGES: Record<string, string> = {
-  design: "https://picsum.photos/seed/design-creative/1200/400",
-  writing: "https://picsum.photos/seed/writing-desk/1200/400",
-  programming: "https://picsum.photos/seed/code-laptop/1200/400",
-  digital_work: "https://picsum.photos/seed/digital-laptop/1200/400",
-  marketing: "https://picsum.photos/seed/marketing-team/1200/400",
-  tech_help: "https://picsum.photos/seed/tech-support/1200/400",
-  physical_help: "https://picsum.photos/seed/moving-help/1200/400",
-  home_repairs: "https://picsum.photos/seed/home-repair/1200/400",
-  home_services: "https://picsum.photos/seed/home-cleaning/1200/400",
-  errands: "https://picsum.photos/seed/errands-shopping/1200/400",
-  transportation: "https://picsum.photos/seed/delivery-transport/1200/400",
-  education: "https://picsum.photos/seed/study-classroom/1200/400",
-  tutoring: "https://picsum.photos/seed/tutoring-student/1200/400",
-  photography: "https://picsum.photos/seed/photography-camera/1200/400",
-  event_planning: "https://picsum.photos/seed/event-party/1200/400",
-  fitness: "https://picsum.photos/seed/fitness-gym/1200/400",
-  cooking: "https://picsum.photos/seed/cooking-chef/1200/400",
+  design: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=800",
+  tech_help: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800",
+  physical_help: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=800",
+  home_repairs: "https://images.unsplash.com/photo-1581244276891-9955cf47d27e?auto=format&fit=crop&q=80&w=800",
+  errands: "https://images.unsplash.com/photo-1534452203294-49c8913721b2?auto=format&fit=crop&q=80&w=800",
+  other: "https://images.unsplash.com/photo-1454165833267-028cc21e76bc?auto=format&fit=crop&q=80&w=800",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  open: "Open", in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  open: "bg-blue-50 text-blue-700 border-blue-200",
-  in_progress: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  completed: "bg-green-50 text-green-700 border-green-200",
-  cancelled: "bg-red-50 text-red-700 border-red-200",
-};
-
-const OFFER_STATUS_COLORS: Record<string, string> = {
-  accepted: "bg-green-50 text-green-700 border-green-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
-  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  pending: "bg-gray-50 text-gray-600 border-gray-200",
-  withdrawn: "bg-gray-50 text-gray-400 border-gray-200",
-};
-
-const statusOrder = ["open", "in_progress", "completed"];
-
-function StatusTimeline({ current }: { current: string }) {
-  let idx = statusOrder.indexOf(current);
-  if (idx === -1) idx = 0;
+function StatusBadge({ status }: { status: string }) {
+  const configs: Record<string, { label: string, color: string, bg: string }> = {
+    published: { label: "Open", color: "#1D4ED8", bg: "#EFF6FF" },
+    in_progress: { label: "In Progress", color: "#D97706", bg: "#FFFBEB" },
+    completed: { label: "Completed", color: "#059669", bg: "#F0FDF4" },
+    cancelled: { label: "Cancelled", color: "#DC2626", bg: "#FEF2F2" },
+  };
+  const config = configs[status] || configs.published;
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      {statusOrder.map((s, i) => {
-        const done = i < idx || current === "completed";
-        const now = i === idx && current !== "completed";
-        return (
-          <div key={s} className="flex flex-col items-center flex-1">
-            <div className="flex items-center w-full">
-              {i > 0 && <div className={`h-0.5 flex-1 ${done || now ? "bg-[#0C6B38]" : "bg-gray-200"}`} />}
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-all ${
-                done ? "bg-[#0C6B38] text-white" : now ? "bg-[#0C6B38] text-white ring-4 ring-[#0C6B38]/20" : "bg-gray-100 text-gray-400"
-              }`}>
-                {done ? <CheckCircle2 className="w-3 h-3" /> : now ? <CircleDot className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
-              </div>
-              {i < statusOrder.length - 1 && <div className={`h-0.5 flex-1 ${done ? "bg-[#0C6B38]" : "bg-gray-200"}`} />}
-            </div>
-            <span className={`text-[10px] mt-1.5 font-medium text-center ${now || done ? "text-[#0C6B38]" : "text-gray-400"}`}>
-              {STATUS_LABELS[s]?.split(" ")[0]}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+    <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current opacity-80"
+      style={{ color: config.color, backgroundColor: config.bg }}>
+      {config.label}
+    </span>
   );
 }
 
@@ -119,75 +70,29 @@ export default function RequestDetails() {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
-
-  if (taskLoading) {
-    return (
-      <div className="min-h-screen bg-[#F8FAF8]">
-        <MobileHeader title="Task Details" />
-        <div className="flex items-center justify-center pt-32">
-          <Loader2 className="w-8 h-8 animate-spin text-[#0C6B38]" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!task) {
-    return (
-      <div className="min-h-screen bg-[#F8FAF8]">
-        <MobileHeader title="Task Details" />
-        <div className="max-w-lg mx-auto px-4 pt-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white border border-gray-100 flex items-center justify-center mx-auto mb-5">
-            <AlertCircle className="w-7 h-7 text-gray-300" />
-          </div>
-          <h2 className="text-xl font-bold text-[#0D0D0D] mb-2">Task not found</h2>
-          <p className="text-gray-400 text-sm mb-6">This task may have been removed or the link is invalid.</p>
-          <Link href="/discover">
-            <button className="text-sm font-semibold px-6 py-3 rounded-xl text-white" style={{ background: "#0C6B38" }}>
-              Browse Tasks
-            </button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const isCreator = user?.uid === task.requester_id;
-  const myOffer = offers.find(o => o.worker_id === user?.uid);
-  const hasApplied = !!myOffer;
-  const coverImage = CATEGORY_IMAGES[task.category] || `https://picsum.photos/seed/${task.id}/1200/400`;
-  const catLabel = CATEGORY_LABELS[task.category] || task.category;
-  const statusClass = STATUS_COLORS[task.status] || "bg-gray-50 text-gray-600 border-gray-200";
-  const creatorName = task.profiles?.full_name || "Anonymous";
-  const creatorAvatar = task.profiles?.avatar_url;
 
   const handleSubmitOffer = async () => {
-    if (pitchText.length < 50) {
-      toast({ title: "Pitch too short", description: "Minimum 50 characters required.", variant: "destructive" });
-      return;
-    }
+    if (!taskId) return;
     try {
       await submitOffer({
+        amount: offerAmount,
         message: pitchText,
-        amount: offerAmount || task.budget,
-        deliveryTime: deliveryTime || undefined,
+        delivery_time: deliveryTime,
       });
-      toast({ title: "Offer Submitted!", description: "The task owner will review your pitch soon." });
+      toast({ title: "Offer Sent", description: "Your offer has been submitted successfully." });
       setShowOfferDialog(false);
-      setPitchText(""); setOfferAmount(0); setDeliveryTime("");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to submit offer";
-      toast({ title: "Failed", description: message, variant: "destructive" });
+      setPitchText("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
   const handleAcceptOffer = async (offerId: string, workerName: string) => {
     try {
       await acceptOffer(offerId);
-      toast({ title: "Worker Hired!", description: `${workerName} has been accepted. Work can begin!` });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to accept offer";
-      toast({ title: "Failed", description: message, variant: "destructive" });
+      toast({ title: "Worker Hired", description: `You have hired ${workerName} for this task.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
@@ -195,437 +100,313 @@ export default function RequestDetails() {
     try {
       await rejectOffer(offerId);
       toast({ title: "Offer Declined" });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to decline offer";
-      toast({ title: "Failed", description: message, variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
   const handleCompleteTask = async () => {
+    if (!task || !task.helperId) return;
+    const acceptedOffer = offers.find(o => o.status === 'accepted');
+    if (!acceptedOffer) return;
+
     try {
-      const result = await completeTask.mutateAsync(task.id);
-      toast({ title: "Task Completed!", description: `₦${(result.payout || 0).toLocaleString()} released to the worker.` });
-      setShowReviewDialog(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to complete task";
-      toast({ title: "Failed", description: message, variant: "destructive" });
+      await completeTask.mutateAsync({
+        taskId: task.id,
+        workerId: task.helperId,
+        amount: acceptedOffer.amount
+      });
+      toast({ title: "Task Completed", description: "Payment has been released to the worker." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
   const handleSubmitReview = async () => {
-    if (!task.helper_id) return;
+    if (!task || !task.helperId || !user?.uid) return;
     try {
       await submitReview.mutateAsync({
-        taskId: task.id,
-        revieweeId: task.helper_id,
+        task_id: task.id,
+        reviewer_id: user?.uid,
+        reviewee_id: task.helperId,
         rating: reviewRating,
         comment: reviewComment,
       });
-      setReviewSubmitted(true);
-      toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to submit review";
-      toast({ title: "Note", description: message });
-      setReviewSubmitted(true);
+      toast({ title: "Review Submitted", description: "Thank you for your feedback!" });
+      setShowReviewDialog(false);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
+  if (taskLoading) return (
+    <div className="min-h-screen bg-[#F8FAF9] flex items-center justify-center">
+      <Loader2 className="w-10 h-10 animate-spin text-[#0C6B38]" />
+    </div>
+  );
+
+  if (!task) return (
+    <div className="min-h-screen bg-[#F8FAF9] flex flex-col items-center justify-center p-6 text-center">
+      <div className="w-20 h-20 bg-white rounded-[32px] shadow-premium flex items-center justify-center mb-6">
+        <AlertCircle size={32} className="text-gray-200" />
+      </div>
+      <h2 className="text-xl font-black text-gray-900">Task not found</h2>
+      <p className="text-gray-400 text-sm mt-2 mb-8">The task you're looking for doesn't exist.</p>
+      <Link href="/discover">
+        <button className="bg-gray-900 text-white px-8 py-3 rounded-2xl font-bold">Go Back</button>
+      </Link>
+    </div>
+  );
+
+  const isCreator = user?.uid === task.creatorId;
+  const myOffer = offers.find(o => o.worker_id === user?.uid);
+  const hasApplied = !!myOffer;
+  const coverImage = CATEGORY_IMAGES[task.category] || CATEGORY_IMAGES.other;
+
   return (
-    <div className="min-h-screen bg-[#F8FAF8]" style={{ paddingBottom: "80px" }}>
-      <MobileHeader title="Task Details" />
+    <div className="min-h-screen bg-[#F8FAF9] pb-32">
 
-      <div className="max-w-2xl mx-auto px-4 pb-10">
+      {/* Immersive Header */}
+      <div className="relative h-[280px] w-full overflow-hidden">
+        <img src={coverImage} className="w-full h-full object-cover" alt="Task Cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#F8FAF9] via-[#F8FAF9]/20 to-black/30" />
 
-        <div className="py-4">
-          <button
-            onClick={() => window.history.back()}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#0C6B38] transition-colors font-medium"
-          >
-            <ChevronLeft className="w-4 h-4" /> Back
-          </button>
+        {/* Navigation Bar */}
+        <div className="absolute top-12 left-0 right-0 px-6 flex items-center justify-between">
+           <motion.button
+             whileTap={{ scale: 0.9 }}
+             onClick={() => window.history.back()}
+             className="w-11 h-11 glass-card rounded-2xl flex items-center justify-center border-white/20"
+           >
+             <ArrowLeft size={20} className="text-gray-900" strokeWidth={3} />
+           </motion.button>
+
+           <div className="flex gap-2">
+             <motion.button whileTap={{ scale: 0.9 }} className="w-11 h-11 glass-card rounded-2xl flex items-center justify-center border-white/20">
+               <Share2 size={20} className="text-gray-900" />
+             </motion.button>
+           </div>
         </div>
-
-        {/* Cover image */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="relative rounded-2xl overflow-hidden h-52 mb-4 bg-gray-100">
-            <img src={coverImage} alt={catLabel} className="w-full h-full object-cover" />
-            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 60%)" }} />
-            <div className="absolute top-4 left-4">
-              <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border bg-white/90 backdrop-blur-sm ${statusClass}`}>
-                {STATUS_LABELS[task.status] || task.status}
-              </span>
-            </div>
-            <div className="absolute top-4 right-4">
-              <span className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white/90 backdrop-blur-sm text-gray-700 border-gray-200">
-                {catLabel}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Main task card */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
-          <div className="bg-white rounded-2xl p-6 mb-4" style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-            <h1 className="text-2xl font-bold text-[#0D0D0D] mb-3 leading-snug">{task.title}</h1>
-
-            <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-5">
-              {task.location && (
-                <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{task.location}</span>
-              )}
-              {task.is_remote && (
-                <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" />Remote</span>
-              )}
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />{format(new Date(task.created_at), "MMM d, yyyy")}
-              </span>
-              {(task.offers_count || 0) > 0 && (
-                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />{task.offers_count} offers</span>
-              )}
-            </div>
-
-            {task.budget > 0 && (
-              <div className="rounded-xl px-5 py-4 mb-5" style={{ background: "rgba(12,107,56,0.06)", border: "1px solid rgba(12,107,56,0.12)" }}>
-                <p className="text-3xl font-bold" style={{ color: "#0C6B38" }}>{formatLocal(task.budget)}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Budget per task</p>
-              </div>
-            )}
-
-            {task.status !== "cancelled" && (
-              <div className="rounded-xl bg-[#F8FAF8] mb-5 px-3">
-                <StatusTimeline current={task.status} />
-              </div>
-            )}
-
-            <div>
-              <h3 className="text-sm font-semibold text-[#0D0D0D] mb-2">Description</h3>
-              <p className="text-sm text-gray-500 whitespace-pre-line leading-relaxed">{task.description}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Posted By */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <div className="bg-white rounded-2xl p-5 mb-4" style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-            <h3 className="text-sm font-semibold text-[#0D0D0D] mb-4">Posted by</h3>
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full overflow-hidden bg-[#0C6B38] flex items-center justify-center shrink-0">
-                {creatorAvatar ? (
-                  <img src={creatorAvatar} alt={creatorName} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-white font-bold text-sm">{creatorName[0]?.toUpperCase()}</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm text-[#0D0D0D]">{creatorName}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
-                  {task.profiles?.location && (
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{task.profiles.location}</span>
-                  )}
-                </div>
-              </div>
-              {!isCreator && user && (
-                <Link href={`/public-profile/${task.requester_id}`}>
-                  <button className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-                    View Profile
-                  </button>
-                </Link>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Offers */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-          <div className="bg-white rounded-2xl mb-4 overflow-hidden" style={{ border: "1px solid #F0F0F0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #F5F5F5" }}>
-              <h3 className="text-sm font-semibold text-[#0D0D0D]">
-                Offers {offersLoading ? "" : `(${offers.length})`}
-              </h3>
-              {offersLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
-            </div>
-
-            {offersLoading ? (
-              <div className="py-10 text-center">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-300 mx-auto" />
-              </div>
-            ) : offers.length === 0 ? (
-              <div className="text-center py-10">
-                <Send className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400">No offers yet — be the first!</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {offers.map((offer) => {
-                  const statusClass = OFFER_STATUS_COLORS[offer.status] || "bg-gray-50 text-gray-600 border-gray-200";
-                  const workerName = offer.profiles?.full_name || "Anonymous";
-                  const workerAvatar = offer.profiles?.avatar_url;
-                  const repScore = offer.profiles?.reputation_score || 0;
-                  const tasksDone = offer.profiles?.total_tasks_done || 0;
-
-                  return (
-                    <div key={offer.id} className="p-5">
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 rounded-full bg-[#0C6B38] overflow-hidden flex items-center justify-center shrink-0">
-                          {workerAvatar ? (
-                            <img src={workerAvatar} alt={workerName} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-white text-xs font-bold">{workerName[0]}</span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <p className="font-semibold text-sm text-[#0D0D0D]">{workerName}</p>
-                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${statusClass}`}>
-                              {offer.status}
-                            </span>
-                          </div>
-                          <div className="flex items-center flex-wrap gap-2 text-xs text-gray-400 mb-2">
-                            {repScore > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />{repScore.toFixed(1)}
-                              </span>
-                            )}
-                            {tasksDone > 0 && (
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="w-3 h-3" />{tasksDone} done
-                              </span>
-                            )}
-                            {offer.amount > 0 && (
-                              <>
-                                <span>·</span>
-                                <span className="font-bold" style={{ color: "#0C6B38" }}>{formatLocal(offer.amount)}</span>
-                              </>
-                            )}
-                            {offer.delivery_time && (
-                              <>
-                                <span>·</span>
-                                <span>{offer.delivery_time}</span>
-                              </>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed">{offer.message}</p>
-
-                          {isCreator && offer.status === "pending" && task.status === "open" && (
-                            <div className="flex gap-2 mt-3">
-                              <button
-                                onClick={() => handleAcceptOffer(offer.id, workerName)}
-                                disabled={acceptPending}
-                                className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-lg text-white transition-all disabled:opacity-60"
-                                style={{ background: "#0C6B38" }}
-                              >
-                                {acceptPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                                Hire
-                              </button>
-                              <button
-                                onClick={() => handleDeclineOffer(offer.id)}
-                                className="flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-lg text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
-                              >
-                                <X className="w-3 h-3" /> Decline
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Worker can message the creator after being accepted */}
-                          {offer.status === "accepted" && !isCreator && offer.worker_id === user?.uid && (
-                            <Link href="/messages">
-                              <button className="flex items-center gap-1.5 mt-3 text-xs font-semibold px-3.5 py-1.5 rounded-lg border border-[#0C6B38]/30 text-[#0C6B38] hover:bg-[#0C6B38]/5 transition-colors">
-                                <MessageCircle className="w-3 h-3" /> Message Client
-                              </button>
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Action Buttons */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="space-y-3">
-
-          {!user && task.status === "open" && (
-            <Link href="/auth">
-              <button className="w-full flex items-center justify-center gap-2 py-3.5 text-base font-semibold rounded-2xl text-white transition-all hover:opacity-90"
-                style={{ background: "linear-gradient(135deg, #0C6B38, #0a5a30)", boxShadow: "0 4px 14px rgba(12,107,56,0.3)" }}>
-                <Send className="w-4 h-4" /> Sign in to Submit Offer
-              </button>
-            </Link>
-          )}
-
-          {user && !isCreator && !hasApplied && task.status === "open" && (
-            <button
-              className="w-full flex items-center justify-center gap-2 py-3.5 text-base font-semibold rounded-2xl text-white transition-all hover:opacity-90"
-              style={{ background: "linear-gradient(135deg, #0C6B38, #0a5a30)", boxShadow: "0 4px 14px rgba(12,107,56,0.3)" }}
-              onClick={() => { setOfferAmount(task.budget || 0); setShowOfferDialog(true); }}
-            >
-              <Send className="w-4 h-4" /> Submit Your Offer
-            </button>
-          )}
-
-          {hasApplied && myOffer?.status === "pending" && (
-            <div className="rounded-2xl p-5 text-center" style={{ background: "rgba(12,107,56,0.06)", border: "1px solid rgba(12,107,56,0.15)" }}>
-              <CheckCircle2 className="w-8 h-8 mx-auto mb-2" style={{ color: "#0C6B38" }} />
-              <p className="font-semibold text-sm" style={{ color: "#0C6B38" }}>Offer submitted!</p>
-              <p className="text-xs text-gray-400 mt-1">Check back for updates from the task owner.</p>
-            </div>
-          )}
-
-          {hasApplied && myOffer?.status === "accepted" && (
-            <div className="rounded-2xl p-5 text-center" style={{ background: "rgba(12,107,56,0.06)", border: "1px solid rgba(12,107,56,0.15)" }}>
-              <CheckCircle2 className="w-8 h-8 mx-auto mb-2" style={{ color: "#0C6B38" }} />
-              <p className="font-semibold text-sm" style={{ color: "#0C6B38" }}>Your offer was accepted!</p>
-              <p className="text-xs text-gray-400 mt-1">You've been hired. Deliver great work!</p>
-            </div>
-          )}
-
-          {isCreator && task.status === "in_progress" && (
-            <button
-              className="w-full flex items-center justify-center gap-2 py-3.5 font-semibold rounded-2xl text-white transition-all disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #059669, #047857)" }}
-              onClick={handleCompleteTask}
-              disabled={completeTask.isPending}
-            >
-              {completeTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              Complete & Release Payment
-            </button>
-          )}
-
-          {isCreator && task.status === "open" && offers.length > 0 && (
-            <p className="text-center text-xs text-gray-400">
-              Review the offers above and hire a worker to get started.
-            </p>
-          )}
-
-          {isCreator && task.status === "completed" && !reviewSubmitted && task.helper_id && (
-            <button
-              className="w-full flex items-center justify-center gap-2 py-3.5 font-semibold rounded-2xl border border-[#0C6B38] text-[#0C6B38] hover:bg-[#0C6B38]/5 transition-colors"
-              onClick={() => setShowReviewDialog(true)}
-            >
-              <Star className="w-4 h-4" /> Leave a Review
-            </button>
-          )}
-        </motion.div>
       </div>
 
-      {/* Submit Offer Dialog */}
-      <Dialog open={showOfferDialog} onOpenChange={setShowOfferDialog}>
-        <DialogContent className="max-w-lg rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Submit Your Offer</DialogTitle>
-            <DialogDescription className="text-sm text-gray-400">
-              Write a compelling pitch explaining why you're the right person for this task.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-1">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Your Offer Amount (₦)</label>
-              <Input
-                type="number"
-                value={offerAmount || ""}
-                onChange={e => setOfferAmount(Number(e.target.value))}
-                placeholder={`Default: ${formatLocal(task.budget)}`}
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Estimated Delivery Time</label>
-              <Input
-                value={deliveryTime}
-                onChange={e => setDeliveryTime(e.target.value)}
-                placeholder="e.g. 3 days, 1 week..."
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-                Your Pitch ({pitchText.length}/50 min)
-              </label>
-              <Textarea
-                value={pitchText}
-                onChange={e => setPitchText(e.target.value)}
-                placeholder="Explain your experience, approach, and why you're perfect for this task..."
-                className="rounded-xl border-gray-200 min-h-[140px] text-sm resize-none"
-              />
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button
-                onClick={() => setShowOfferDialog(false)}
-                className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmitOffer}
-                disabled={submitPending || pitchText.length < 50}
-                className="flex-1 py-3 rounded-2xl text-white text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                style={{ background: "#0C6B38" }}
-              >
-                {submitPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Submit Offer
-              </button>
+      <div className="px-6 -mt-16 relative z-10 space-y-6">
+
+        {/* Main Info Card */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-white rounded-[40px] p-8 shadow-premium border border-gray-100"
+        >
+          <div className="flex justify-between items-start mb-6">
+            <StatusBadge status={task.status} />
+            <div className="text-right">
+              <p className="text-[#0C6B38] text-2xl font-black tracking-tighter">{formatLocal(task.budget)}</p>
+              <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest">Fixed Budget</p>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* Review Dialog */}
-      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
-        <DialogContent className="max-w-md rounded-3xl">
+          <h1 className="text-2xl font-black text-gray-900 leading-tight mb-4">{task.title}</h1>
+
+          <div className="flex flex-wrap gap-4 mb-8">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
+              <MapPin size={14} className="text-gray-400" />
+              <span className="text-xs font-bold text-gray-600">{task.locationType === 'remote' ? 'Remote' : (task.location || 'Local')}</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl border border-gray-100">
+              <Clock size={14} className="text-gray-400" />
+              <span className="text-xs font-bold text-gray-600">{task.urgency}</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+             <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Description</h3>
+             <p className="text-sm text-gray-600 leading-relaxed font-medium whitespace-pre-line">
+               {task.description}
+             </p>
+          </div>
+        </motion.div>
+
+        {/* Creator Info */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-[32px] p-6 border border-gray-50 shadow-sm flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <Avatar className="h-12 w-12 ring-2 ring-[#0C6B38]/10">
+              <AvatarImage src={task.profiles?.avatar_url || undefined} />
+              <AvatarFallback className="bg-gray-100 text-gray-400 font-bold">{task.profiles?.full_name?.[0]}</AvatarFallback>
+            </Avatar>
+            <div>
+               <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Requested by</p>
+               <h4 className="text-gray-900 font-bold">{task.profiles?.full_name || 'Anonymous'}</h4>
+            </div>
+          </div>
+          <Link href={`/public-profile/${task.creatorId}`}>
+             <motion.button whileTap={{ scale: 0.95 }} className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+               <ChevronRight size={20} className="text-gray-400" />
+             </motion.button>
+          </Link>
+        </motion.div>
+
+        {/* Offers Section */}
+        <div className="space-y-4 pt-4">
+           <div className="flex items-center justify-between">
+             <h2 className="text-lg font-black text-gray-900">Worker Offers</h2>
+             <span className="text-gray-400 text-xs font-bold">{offers.length} total</span>
+           </div>
+
+           {offers.length === 0 ? (
+             <div className="bg-gray-100/50 rounded-[32px] p-10 text-center border-2 border-dashed border-gray-200">
+                <Briefcase size={32} className="text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-400 text-sm font-bold">No offers yet</p>
+             </div>
+           ) : (
+             <div className="space-y-4">
+               {offers.map((offer) => (
+                 <motion.div
+                   key={offer.id}
+                   layoutId={offer.id}
+                   className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-sm"
+                 >
+                   <div className="flex items-start justify-between mb-4">
+                     <div className="flex items-center gap-3">
+                       <Avatar className="h-10 w-10">
+                         <AvatarImage src={offer.profiles?.avatar_url || undefined} />
+                         <AvatarFallback className="bg-green-50 text-[#0C6B38] font-bold">{offer.profiles?.full_name?.[0]}</AvatarFallback>
+                       </Avatar>
+                       <div>
+                         <h4 className="text-sm font-black text-gray-900">{offer.profiles?.full_name}</h4>
+                         <div className="flex items-center gap-1 mt-0.5">
+                            <Star size={10} className="fill-amber-400 text-amber-400" />
+                            <span className="text-[10px] font-black text-gray-400">
+                              {offer.profiles?.reputation_score || 'New'} · {offer.profiles?.total_tasks_done || 0} Jobs
+                            </span>
+                         </div>
+                       </div>
+                     </div>
+                     <div className="text-right">
+                        <p className="text-[#0C6B38] text-sm font-black">{formatLocal(offer.amount)}</p>
+                        <p className="text-[9px] text-gray-400 font-bold uppercase">{offer.delivery_time || 'Quick delivery'}</p>
+                     </div>
+                   </div>
+
+                   <p className="text-xs text-gray-500 font-medium leading-relaxed mb-4 line-clamp-2">
+                     {offer.message}
+                   </p>
+
+                   {isCreator && task.status === 'published' && offer.status === 'pending' && (
+                     <div className="flex gap-2">
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleAcceptOffer(offer.id, offer.profiles?.full_name || "this worker")}
+                          disabled={acceptPending}
+                          className="flex-1 bg-[#0C6B38] text-white py-2.5 rounded-2xl text-xs font-black shadow-green"
+                        >
+                          {acceptPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Hire Worker"}
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleDeclineOffer(offer.id)}
+                          className="px-6 bg-gray-50 text-gray-400 py-2.5 rounded-2xl text-xs font-black"
+                        >
+                          Decline
+                        </motion.button>
+                     </div>
+                   )}
+                 </motion.div>
+               ))}
+             </div>
+           )}
+        </div>
+      </div>
+
+      {/* Floating Action Bar */}
+      {!isCreator && task.status === 'published' && (
+        <div className="fixed bottom-0 left-0 right-0 p-6 z-50">
+          <div className="mx-auto max-w-lg glass-card rounded-[32px] p-4 flex items-center justify-between shadow-premium-lg border-white/60">
+            <div className="px-4">
+               <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Starting at</p>
+               <p className="text-gray-900 text-lg font-black">{formatLocal(task.budget)}</p>
+            </div>
+
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setOfferAmount(task.budget); setShowOfferDialog(true); }}
+              className="bg-gray-900 text-white px-8 h-14 rounded-2xl font-black text-sm flex items-center gap-2 shadow-xl"
+            >
+              Send Offer <ArrowUpRight size={18} strokeWidth={3} />
+            </motion.button>
+          </div>
+        </div>
+      )}
+
+      {/* Hire Completion Bar */}
+      {isCreator && task.status === 'in_progress' && (
+         <div className="fixed bottom-0 left-0 right-0 p-6 z-50">
+           <div className="mx-auto max-w-lg bg-gray-900 rounded-[32px] p-4 flex items-center justify-between shadow-premium-lg">
+             <div className="px-4">
+                <p className="text-green-400 text-[10px] font-black uppercase tracking-widest">Work in Progress</p>
+                <p className="text-white text-sm font-bold">Release payment when done</p>
+             </div>
+             <motion.button
+               whileTap={{ scale: 0.95 }}
+               onClick={handleCompleteTask}
+               className="bg-green-500 text-white px-6 h-14 rounded-2xl font-black text-sm shadow-xl"
+             >
+               Approve Work
+             </motion.button>
+           </div>
+         </div>
+      )}
+
+      {/* Review Prompt */}
+      {isCreator && task.status === 'completed' && task.helperId && (
+         <div className="fixed bottom-0 left-0 right-0 p-6 z-50">
+            <motion.button
+               whileTap={{ scale: 0.95 }}
+               onClick={() => setShowReviewDialog(true)}
+               className="mx-auto max-w-lg w-full bg-amber-400 text-amber-950 h-16 rounded-[32px] font-black flex items-center justify-center gap-3 shadow-premium-lg"
+            >
+              <Star size={20} className="fill-amber-950" /> Rate Experience
+            </motion.button>
+         </div>
+      )}
+
+      {/* Dialogs - Kept mostly same but with rounded-3xl styling */}
+      <Dialog open={showOfferDialog} onOpenChange={setShowOfferDialog}>
+        <DialogContent className="rounded-[40px] p-8 border-none shadow-premium-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Leave a Review</DialogTitle>
-            <DialogDescription className="text-sm text-gray-400">
-              How was your experience working with this helper?
+            <DialogTitle className="text-2xl font-black text-gray-900">Send an Offer</DialogTitle>
+            <DialogDescription className="text-sm font-medium text-gray-400">
+              Let the creator know why you're the best fit.
             </DialogDescription>
           </DialogHeader>
-          {reviewSubmitted ? (
-            <div className="py-6 text-center">
-              <CheckCircle2 className="w-12 h-12 mx-auto mb-3" style={{ color: "#0C6B38" }} />
-              <p className="font-semibold text-[#0D0D0D]">Review submitted!</p>
-              <p className="text-sm text-gray-400 mt-1">Thank you for your feedback.</p>
+          <div className="space-y-6 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                 <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-2">My Quote (₦)</label>
+                 <Input type="number" value={offerAmount} onChange={e => setOfferAmount(Number(e.target.value))} className="h-14 rounded-2xl bg-gray-50 border-none font-bold" />
+               </div>
+               <div>
+                 <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-2">Timeframe</label>
+                 <Input value={deliveryTime} onChange={e => setDeliveryTime(e.target.value)} placeholder="e.g. 2 days" className="h-14 rounded-2xl bg-gray-50 border-none font-bold" />
+               </div>
             </div>
-          ) : (
-            <div className="space-y-4 mt-1">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-3">Rating</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} onClick={() => setReviewRating(star)}>
-                      <Star className={`w-8 h-8 transition-colors ${star <= reviewRating ? "fill-amber-400 text-amber-400" : "text-gray-200"}`} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Comment (optional)</label>
-                <Textarea
-                  value={reviewComment}
-                  onChange={e => setReviewComment(e.target.value)}
-                  placeholder="Share your experience..."
-                  className="rounded-xl border-gray-200 min-h-[100px] text-sm resize-none"
-                />
-              </div>
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={() => setShowReviewDialog(false)}
-                  className="flex-1 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  Skip
-                </button>
-                <button
-                  onClick={handleSubmitReview}
-                  disabled={submitReview.isPending}
-                  className="flex-1 py-3 rounded-2xl text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
-                  style={{ background: "#0C6B38" }}
-                >
-                  {submitReview.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
-                  Submit Review
-                </button>
-              </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-2">Message</label>
+              <Textarea value={pitchText} onChange={e => setPitchText(e.target.value)} className="min-h-[120px] rounded-[24px] bg-gray-50 border-none font-medium text-sm" placeholder="I have 5 years of experience in..." />
             </div>
-          )}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSubmitOffer}
+              disabled={submitPending || pitchText.length < 10}
+              className="w-full bg-[#0C6B38] text-white h-16 rounded-[24px] font-black shadow-green flex items-center justify-center gap-2"
+            >
+              {submitPending ? <Loader2 className="animate-spin" /> : <><Send size={20} /> Submit Offer</>}
+            </motion.button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
