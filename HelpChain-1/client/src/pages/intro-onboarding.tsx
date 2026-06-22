@@ -160,13 +160,10 @@ export default function IntroOnboardingPage() {
   return (
     <main className="min-h-[100dvh] overflow-hidden px-5 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1rem)]" style={{ background: brand.paper }}>
       <header className="mx-auto flex w-full max-w-md items-center justify-between">
-        <button
-          onClick={() => setLocation("/")}
-          className="flex items-center gap-2 rounded-full border border-[#DDECE2] bg-white px-3 py-2 text-sm font-black text-[#173D2A]"
-        >
+        <div className="flex items-center gap-2 rounded-full border border-[#DDECE2] bg-white px-3 py-2 text-sm font-black text-[#173D2A]">
           <HelpChainLogo size="xs" />
           HelpChain
-        </button>
+        </div>
         <button
           onClick={() => setLocation("/auth?mode=login")}
           className="rounded-full px-4 py-2 text-sm font-bold text-[#5E7167]"

@@ -1,0 +1,6 @@
+- [Firebase config pattern](firebase-config.md) — firebase.ts must use import.meta.env.VITE_FIREBASE_* — hardcoded credentials were removed in Batch 1.
+- [Supabase key name](supabase-key.md) — secret is VITE_SUPABASE_PUBLISHABLE_KEY, not VITE_SUPABASE_ANON_KEY; supabase.ts must use the publishable key name.
+- [App entry routing](app-entry-routing.md) — home.tsx is the smart entry router (not a marketing page); dispatches based on auth state + hc-intro-seen + hc-onboarding-done flags.
+- [Git sandbox restriction](git-sandbox.md) — git add/commit/push/fetch are all blocked in the main agent; only project_tasks can perform git writes; user must push from local machine.
+- [Dist tracked in git](dist-tracked.md) — HelpChain-1/dist/ is tracked in git from early auto-commits despite .gitignore; needs untracking in a future cleanup push.
+- [Attached assets gitignore](attached-assets.md) — attached_assets/ added to root .gitignore in Batch 1; was previously tracked in auto-commits.

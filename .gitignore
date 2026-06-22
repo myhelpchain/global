@@ -28,6 +28,9 @@ coverage/
 preview*.png
 **/preview*.png
 
+# Replit agent session assets (screenshots, conversation pastes, AI images)
+attached_assets/
+
 # OS/editor files
 .DS_Store
 Thumbs.db

@@ -4,13 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDsX6V3HFl59fGzu36BIm8djOiL_ElWGqc",
-  authDomain: "myhelpchain123.firebaseapp.com",
-  projectId: "myhelpchain123",
-  storageBucket: "myhelpchain123.firebasestorage.app",
-  messagingSenderId: "156041153638",
-  appId: "1:156041153638:web:5a0e7f2acbbf6641e031a7",
-  measurementId: "G-XRPBTFW344",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
 };
 
 let app: ReturnType<typeof initializeApp> | null = null;

@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
 let _client: SupabaseClient | null = null;
 
@@ -9,7 +9,7 @@ export function getSupabaseClient(): SupabaseClient | null {
   if (_client) return _client;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     if (SUPABASE_URL && !SUPABASE_ANON_KEY) {
-      console.warn("[Supabase] VITE_SUPABASE_ANON_KEY is not set — realtime disabled.");
+      console.warn("[Supabase] VITE_SUPABASE_PUBLISHABLE_KEY is not set — realtime disabled.");
     }
     return null;
   }
