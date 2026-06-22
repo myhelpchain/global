@@ -79,7 +79,7 @@ function AnimatedPage({ children }: { children: React.ReactNode }) {
       exit="exit"
       variants={pageVariants}
       style={{
-        minHeight: "100%",
+        minHeight: "100dvh",
         width: "100%",
         position: "absolute",
         background: "#F8FAF9"
