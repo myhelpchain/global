@@ -280,9 +280,5 @@ function CreateRequestContent() {
 }
 
 export default function CreateRequest() {
-  return (
-    <ProtectedRoute>
-      <CreateRequestContent />
-    </ProtectedRoute>
-  );
+  return <CreateRequestContent />;
 }

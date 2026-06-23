@@ -27,7 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useFirebaseAuth();
-  const { myTasks, openTasks, tasksLoading, refetchTasks, refetchOpenTasks } = useTasksApi();
+  const { myTasks, openTasks, tasksLoading } = useTasksApi();
   const { availableBalance, escrowBalance } = useWallet();
   const { formatLocal } = useLocalizationStore();
   const [tab, setTab] = useState<"overview" | "tasks" | "open">("overview");
@@ -84,8 +84,7 @@ export default function AdminDashboard() {
   ];
 
   const handleRefresh = () => {
-    refetchTasks();
-    refetchOpenTasks();
+    window.location.reload();
   };
 
   return (
@@ -193,7 +192,7 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-[#0D0D0D] truncate">{task.title}</p>
-                            <p className="text-xs text-gray-400">{task.category.replace(/_/g, " ")} · {format(new Date(task.created_at), "MMM d")}</p>
+                            <p className="text-xs text-gray-400">{task.category.replace(/_/g, " ")} · {format(new Date(task.createdAt?.toDate?.() || task.createdAt), "MMM d")}</p>
                           </div>
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize ${sc}`}>
                             {task.status.replace(/_/g, " ")}
@@ -227,7 +226,7 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
                               <span>{task.category.replace(/_/g, " ")}</span>
                               <span>·</span>
-                              <span>{format(new Date(task.created_at), "MMM d, yyyy")}</span>
+                              <span>{format(new Date(task.createdAt?.toDate?.() || task.createdAt), "MMM d, yyyy")}</span>
                               {task.budget > 0 && (
                                 <>
                                   <span>·</span>

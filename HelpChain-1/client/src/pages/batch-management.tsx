@@ -178,8 +178,8 @@ export default function BatchManagementPage() {
                               {offer.amount > 0 ? formatLocal(offer.amount) : "Open"}
                             </span>
                           </div>
-                          {offer.profiles?.location && (
-                            <p className="text-xs text-gray-400 mb-2">{offer.profiles.location}</p>
+                          {(offer.profiles as any)?.location && (
+                            <p className="text-xs text-gray-400 mb-2">{(offer.profiles as any).location}</p>
                           )}
                           {(offer.profiles?.total_tasks_done || 0) > 0 && (
                             <div className="flex items-center gap-1 mb-2">

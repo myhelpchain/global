@@ -19,7 +19,6 @@ export default function PublicProfilePage() {
   const [, params] = useRoute("/public-profile/:userId");
   const [, navigate] = useLocation();
   const targetUserId = params?.userId;
-  const { startConversation } = useConversations();
 
   const { data, isLoading } = useQuery({
     queryKey: ["public-profile", targetUserId],
@@ -44,8 +43,7 @@ export default function PublicProfilePage() {
     if (!user) { navigate("/auth"); return; }
     if (!targetUserId) return;
     try {
-      const conv = await startConversation({ otherUserId: targetUserId });
-      navigate(`/messages?conv=${conv.id}`);
+      navigate(`/messages?to=${targetUserId}`);
     } catch {
       navigate("/messages");
     }

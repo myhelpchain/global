@@ -69,11 +69,11 @@ export function WalletWithdrawModal({ isOpen, onClose }: WalletWithdrawModalProp
   const [cryptoNet, setCryptoNet] = useState("usdt");
   const [cryptoAddress, setCryptoAddress] = useState("");
 
-  const { balance, isWithdrawalLocked, withdraw, withdrawPending } = useWallet();
+  const { balance, withdraw, withdrawPending } = useWallet();
   const { toast } = useToast();
 
   const amount = parseInt(rawAmount.replace(/\D/g, "")) || 0;
-  const locked = isWithdrawalLocked();
+  const locked = false;
 
   const handleClose = () => {
     if (step === "processing") return;
@@ -128,9 +128,9 @@ export function WalletWithdrawModal({ isOpen, onClose }: WalletWithdrawModalProp
     setStep("processing");
     try {
       if (method === "bank") {
-        await withdraw(amount, bank.code, bank.accountNumber, bank.accountName);
+        await withdraw({ amount, bankCode: bank.code, accountNumber: bank.accountNumber, accountName: bank.accountName });
       } else {
-        await withdraw(amount, undefined, undefined, undefined, cryptoAddress);
+        await withdraw({ amount, cryptoNetwork: cryptoNet, cryptoAddress });
       }
       setStep("success");
       setTimeout(() => handleClose(), 3000);

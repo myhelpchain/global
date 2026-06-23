@@ -48,7 +48,7 @@ export default function SearchPage() {
       const matchesCategory = selectedCategory === "All" ||
         t.category.toLowerCase().includes(selectedCategory.toLowerCase());
       const matchesBudget = maxBudget <= 0 || t.budget <= maxBudget;
-      const matchesRemote = !remoteOnly || t.is_remote;
+      const matchesRemote = !remoteOnly || t.locationType === "remote";
       return matchesQuery && matchesCategory && matchesBudget && matchesRemote;
     });
   }, [openTasks, query, selectedCategory, maxBudget, remoteOnly]);
@@ -208,7 +208,7 @@ export default function SearchPage() {
                             {task.urgency}
                           </span>
                         )}
-                        {task.is_remote && (
+                        {task.locationType === "remote" && (
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                             Remote
                           </span>
@@ -220,7 +220,7 @@ export default function SearchPage() {
                         )}
                         <span className="flex items-center gap-1 text-xs text-gray-400 ml-auto">
                           <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(task.createdAt?.toDate?.() || task.createdAt), { addSuffix: true })}
                         </span>
                       </div>
                       {(task.offers_count || 0) > 0 && (

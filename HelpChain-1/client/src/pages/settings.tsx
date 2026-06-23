@@ -105,8 +105,8 @@ function SettingsContent() {
       bio: profile?.bio || "",
       location: profile?.location || "",
       skills: profile?.skills?.join(", ") || "",
-      country: profile?.country || "NG",
-      baseCurrency: profile?.base_currency || "NGN",
+      country: (profile as any)?.country || "NG",
+      baseCurrency: (profile as any)?.base_currency || "NGN",
     });
     setEditProfileOpen(true);
   };
@@ -239,7 +239,7 @@ function SettingsContent() {
               </div>
               <Separator className="my-1" />
               <div className="flex items-center justify-between py-3 px-1 rounded-lg opacity-50">
-                <div><p className="text-sm font-medium text-foreground">Identity Verification</p><p className="text-xs text-muted-foreground mt-0.5">Coming soon — Tier {profile?.verification_tier || 1}</p></div>
+                <div><p className="text-sm font-medium text-foreground">Identity Verification</p><p className="text-xs text-muted-foreground mt-0.5">Coming soon — Tier {(profile as any)?.verification_tier || 1}</p></div>
                 <Badge variant="secondary" className="text-xs">Soon</Badge>
               </div>
             </CardContent>

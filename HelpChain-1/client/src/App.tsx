@@ -8,14 +8,13 @@ import { FirebaseAuthProvider } from "@/contexts/FirebaseAuthContext";
 import { MobileMenuProvider } from "@/contexts/mobile-menu-context";
 import { RealtimeProvider } from "@/contexts/RealtimeContext";
 import { SplashScreen } from "@/components/layout/SplashScreen";
-import { AnimatePresence, motion, type Variants } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Chatbot } from "@/components/chatbot/chatbot";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 
 import NotFound from "@/pages/not-found";
-// ... (rest of imports)
 import Home from "@/pages/home";
 import IntroOnboardingPage from "@/pages/intro-onboarding";
 import AuthPage from "@/pages/auth";
@@ -53,37 +52,13 @@ function P({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
 
-const pageVariants: Variants = {
-  initial: { opacity: 0, x: 100 },
-  animate: {
-    opacity: 1,
-    x: 0,
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 30
-    }
-  },
-  exit: {
-    opacity: 0,
-    x: -20,
-    transition: { duration: 0.2 }
-  },
-};
-
 function AnimatedPage({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      variants={pageVariants}
-      style={{
-        minHeight: "100dvh",
-        width: "100%",
-        position: "absolute",
-        background: "#F8FAF9"
-      }}
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 30 } }}
+      exit={{ opacity: 0, x: -20, transition: { duration: 0.18 } }}
+      style={{ width: "100%", minHeight: "100dvh", position: "relative" }}
     >
       {children}
     </motion.div>
@@ -94,8 +69,8 @@ function Router() {
   const [location] = useLocation();
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
-      <AnimatePresence mode="popLayout" initial={false}>
+    <div style={{ minHeight: "100dvh", width: "100%", position: "relative" }}>
+      <AnimatePresence mode="wait" initial={false}>
         <Switch key={location} location={location}>
           <Route path="/"              component={Home} />
           <Route path="/intro"         component={IntroOnboardingPage} />
@@ -144,6 +119,23 @@ function Router() {
             {() => <P><AnimatedPage><BatchManagementPage /></AnimatedPage></P>}
           </Route>
 
+          <Route path="/how-it-works"  component={HowItWorks}     />
+          <Route path="/safety"        component={SafetyPage}      />
+          <Route path="/stories"       component={StoriesPage}     />
+          <Route path="/volunteers"    component={VolunteersPage}  />
+          <Route path="/blog"          component={BlogPage}        />
+          <Route path="/events"        component={EventsPage}      />
+          <Route path="/help"          component={HelpPage}        />
+          <Route path="/contact"       component={ContactPage}     />
+          <Route path="/terms"         component={TermsPage}       />
+          <Route path="/privacy"       component={PrivacyPage}     />
+          <Route path="/sitemap"       component={SitemapPage}     />
+          <Route path="/about"         component={AboutPage}       />
+          <Route path="/pricing"       component={PricingPage}     />
+          <Route path="/careers"       component={CareersPage}     />
+          <Route path="/press"         component={PressPage}       />
+          <Route path="/cookies"       component={CookiesPage}     />
+
           <Route component={NotFound} />
         </Switch>
       </AnimatePresence>
@@ -178,7 +170,6 @@ function AppShell() {
 
 function App() {
   useEffect(() => {
-    // Edge-to-edge support for Mobile Devices
     if (Capacitor.isNativePlatform()) {
       StatusBar.setOverlaysWebView({ overlay: true }).catch(console.error);
       StatusBar.setStyle({ style: Style.Dark }).catch(console.error);
